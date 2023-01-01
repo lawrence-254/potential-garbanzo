@@ -14,6 +14,7 @@ def insert_at_any_point(array, num_to_insert, index_to_insert_to, arr_size):
         array[i + 1] = array[i]
 
     array[index_to_insert_to]
-    
- if __name__ == '__main__':
+
+
+if __name__ == '__main__':
     pass

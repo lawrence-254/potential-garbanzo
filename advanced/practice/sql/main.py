@@ -25,7 +25,7 @@ class Storage:
         new_student = Student(name,email)
         self.students.append(new_student)
 
-    def add_correction_std(self, std_email, link):
+    def add_correction(self, std_email, link):
         for student in self.students:
             if student.email == std_email:
                 correction = Correction.link
@@ -36,3 +36,27 @@ class Storage:
             print(f"student: {student.name}, email: {student.email}")
             for student in student.correction:
                 print(f" correction: {correction.link}")
+
+class StudentAssignmentCli(cmd.Cmd):
+    def __init__(self):
+        super().__init__()
+        self.prompt ="@∞# "
+        self.intro = "Welcome to correction management tool"
+
+    def do_add_student(self, arg):
+        '''used to add student: add_student <student_name> <student_email>'''
+        args = arg.split()
+        if  len(args) != 2:
+            print(f'Usage: add_student <student_name> <student_email>')
+            return
+        name, email = args
+        storage.add_student(name, email)
+
+    def do_add_correction(self, arg):
+        '''used to make correction: add_correction <student_email> <correction_link>'''
+        args = arg.split()
+        if len(args) != 2:
+            print(f'Usage: add_correction <student_email> <correction_link>')
+            return
+        email, link = args
+        storage.add_correction(email, link)

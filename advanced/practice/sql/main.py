@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import cmd
+import MySQLdb
 
 class Student:
     def __init__(self, name, email):
@@ -8,7 +9,6 @@ class Student:
         self.corrections = []
 
     def add_correction(self, correction):
-
         self.corrections.append(correction)
 
 
@@ -19,11 +19,15 @@ class Correction:
 
 class Storage:
     def __init__(self,):
+        self.connection = MySQLdb.connect(host='localhost', user='root', password='', db='marks')
+        self.cursor = self.connection.cursor()
         self.students = []
 
     def add_student(self, name, email):
         new_student = Student(name,email)
         self.students.append(new_student)
+        query = "INSERT INTO students (name, email) VALUES (%s, %s)"
+        self.cursor.execute(query, (name, email))
 
     def add_correction(self, std_email, link):
         for student in self.students:

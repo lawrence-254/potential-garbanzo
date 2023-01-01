@@ -28,7 +28,7 @@ class Storage:
     def add_correction(self, std_email, link):
         for student in self.students:
             if student.email == std_email:
-                correction = Correction.link
+                correction = Correction(link)
                 student.add_correction(correction)
 
     def list_students(self):
@@ -68,7 +68,7 @@ class StudentAssignmentCli(cmd.Cmd):
 
     def do_quit(self, arg):
         '''exists the prompt'''
-        print('BYE')
+        print('BYE...')
         return True
 
 if __name__ == '__main__':

@@ -29,4 +29,10 @@ class Storage:
         for student in self.students:
             if student.email == std_email:
                 correction = Correction.link
-                student.add_correct
+                student.add_correction(correction)
+
+    def list_students(self):
+        for student in self.students:
+            print(f"student: {student.name}, email: {student.email}")
+            for student in student.correction:
+                print(f" correction: {correction.link}")

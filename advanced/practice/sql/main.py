@@ -60,3 +60,19 @@ class StudentAssignmentCli(cmd.Cmd):
             return
         email, link = args
         storage.add_correction(email, link)
+
+    def do_list_students(self, arg):
+        '''lists all students and corrections'''
+        storage.list_students()
+
+
+    def do_quit(self, arg):
+        '''exists the prompt'''
+        print('BYE')
+        return True
+
+if __name__ == '__main__':
+    storage =Storage()
+    cli = StudentAssignmentCli()
+    cli.cmdloop()
+

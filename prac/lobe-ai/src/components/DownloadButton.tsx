@@ -9,12 +9,12 @@
 
 const DownloadButton = () => {
   return (
-    <button onClick={() => {
+    <Button onClick={() => {
         //confeti anime
         //download
     }}>
         Download
-    </button>
+    </Button>
   )
 }
 

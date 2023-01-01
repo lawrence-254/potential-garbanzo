@@ -16,4 +16,3 @@ if __name__ == '__main__':
 
     insert_at_the_end(odd, no)
     print('after:', odd)
-    

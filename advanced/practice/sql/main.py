@@ -34,7 +34,7 @@ class Storage:
     def list_students(self):
         for student in self.students:
             print(f"student: {student.name}, email: {student.email}")
-            for student in student.correction:
+            for student in student.corrections:
                 print(f" correction: {correction.link}")
 
 class StudentAssignmentCli(cmd.Cmd):
@@ -75,4 +75,3 @@ if __name__ == '__main__':
     storage =Storage()
     cli = StudentAssignmentCli()
     cli.cmdloop()
-

@@ -5,6 +5,7 @@ background-color: #04DDB2;
 color: #fff;
 font-weight: 700;
 text-align: center;
+cursor: pointer;
 `
 
 const DownloadButton = () => {

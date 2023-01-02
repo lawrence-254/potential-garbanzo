@@ -7,6 +7,7 @@ const Footer = () => {
             <h1>Train your app with lobe</h1>
             <DownloadButton/>
         </div>
+        <hr />
         <div className=""></div>
     </footer>
   )

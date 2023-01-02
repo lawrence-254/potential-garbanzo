@@ -15,10 +15,9 @@ max-width: 70%
 
 function Layout(props:{
     children : React.ReactNode
-    randomBoolean: boolean
 }) {
 
-    const {children, randomBoolean}= props
+    const {children}= props
   return (
 
     <LayoutContainer>
@@ -26,7 +25,6 @@ function Layout(props:{
         <InnerLayoutContainer>
             {children}
         </InnerLayoutContainer>
-        {randomBoolean}
         <Footer/>
     </LayoutContainer>
   )

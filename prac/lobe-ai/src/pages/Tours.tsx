@@ -1,10 +1,10 @@
-import React from 'react'
+import Layout from '../components/Layout'
 
 function Tours() {
   return (
-    <div>
-      
-    </div>
+    <Layout  children={''}>
+
+    </Layout>
   )
 }
 

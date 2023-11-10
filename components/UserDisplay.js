@@ -1,0 +1,1 @@
+app.component('user_display')

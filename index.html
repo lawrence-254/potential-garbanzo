@@ -13,39 +13,11 @@
   <body>
     <div id="app">
       <div class="like">Likes: {{ likes }}</div>
-      <div class="p_display">
-        <div class="p_container">
-          <div class="p_image"><img v-bind:src="image" /></div>
-          <h1>{{ title }}</h1>
-          <p>{{ description }}</p>
-          <p v-if="available">Available</p>
-          <p v-else>Out of stock</p>
-          <ul>
-            <h5>characteristics</h5>
-            <li v-for="detail in details">{{ detail }}</li>
-          </ul>
-          <ul>
-            <h5>similar products</h5>
-            <li
-              v-for="option, index in options"
-              :key="option.id"
-              @mouseover="updateOption(index)"
-            >
-              {{ option.alias }}
-            </li>
-          </ul>
-          <input type="button" value="Like" @click="addLike" />
-          <input
-            type="button"
-            value="Dislike"
-            :disabled="!likes"
-            @click="removeLike"
-          />
-        </div>
-      </div>
     </div>
     <!-- import vue app -->
     <script src="main.js"></script>
+    <!-- import component -->
+    <script src="./components/UserDisplay.js"></script>
     <!-- mount vue app -->
     <script>
       const newApp = app.mount("#app");

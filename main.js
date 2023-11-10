@@ -2,6 +2,7 @@ const app = Vue.createApp({
     data() {
         return {
             product: 'blue cat',
+            alias: 'black swan',
             description: 'an overzealous cat filled with envy and revenge',
             image: './assets/images/cat-1.jpeg',
             available: true,
@@ -24,6 +25,11 @@ const app = Vue.createApp({
         },
         updateImage(optionImage) {
             this.image = optionImage
+        }
+    },
+    computed: {
+        title() {
+            return this.alias + ' ' + this.product
         }
     }
 })

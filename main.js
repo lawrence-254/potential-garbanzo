@@ -15,7 +15,7 @@ const app = Vue.createApp({
     },
     methods: {
         add_like() {
-            this.likes + 1
+            this.likes += 1
         },
         remove_like() {
             if (this.likes > 0) {

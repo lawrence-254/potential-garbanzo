@@ -30,8 +30,8 @@
               {{ option.alias }}
             </li>
           </ul>
-          <input type="button" value="Like" v-on:click="add_like" />
-          <input type="button" value="Dislike" v-on:click="remove_like" />
+          <input type="button" value="Like" @click="add_like" />
+          <input type="button" value="Dislike" @click="remove_like" />
         </div>
       </div>
     </div>

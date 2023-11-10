@@ -4,12 +4,12 @@ const app = Vue.createApp({
             product: 'blue cat',
             alias: 'black swan',
             description: 'an overzealous cat filled with envy and revenge',
+            selectedOption: 0,
             image: './assets/images/cat-1.jpeg',
-            available: true,
             details: ['chases birds', 'friendly to rats', 'blue eyes'],
             options: [
-                { id: 007, product: 'james', alias: 'bond', image: './assets/images/cat-2.jpeg' },
-                { id: 13, product: 'lucky', alias: 'summer', image: './assets/images/cat-1.jpeg' }
+                { id: 007, product: 'james', alias: 'bond', image: './assets/images/cat-2.jpeg', likes: 10 },
+                { id: 13, product: 'lucky', alias: 'summer', image: './assets/images/cat-1.jpeg', likes: 4 }
             ],
             likes: 0
         }
@@ -23,13 +23,28 @@ const app = Vue.createApp({
                 this.likes -= 1
             }
         },
-        updateImage(optionImage) {
-            this.image = optionImage
+        updateOption(index) {
+            this.selectedOption = index
         }
     },
     computed: {
         title() {
             return this.alias + ' ' + this.product
+        },
+        available() {
+            return this.options[selectedOption].likes
+        },
+        starStatus() {
+            ratings = this.options[selectedOption].likes
+            if (ratings > 10 <= 20) {
+                return "Star"
+            } else if (ratings > 20) {
+                return " Super Star"
+            } else {
+                return "Normal Joe"
+            }
+
+            return this.starStatus
         }
     }
 })

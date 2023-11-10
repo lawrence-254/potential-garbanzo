@@ -15,7 +15,7 @@
       <div class="like">Likes: {{ likes }}</div>
       <div class="p_display">
         <div class="p_container">
-          <div><img v-bind:src="image" class="p_image" /></div>
+          <div class="p_image"><img v-bind:src="image" /></div>
           <h1>{{ title }}</h1>
           <p>{{ description }}</p>
           <p v-if="available">Available</p>
@@ -27,9 +27,9 @@
           <ul>
             <h5>similar products</h5>
             <li
-              v-for="option in options"
+              v-for="option, index in options"
               :key="option.id"
-              @mouseover="updateImage(option.image)"
+              @mouseover="updateOption(index)"
             >
               {{ option.alias }}
             </li>

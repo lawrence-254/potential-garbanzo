@@ -1,7 +1,6 @@
 app.component('user_display', {
-    template:
-        /*html*/
-        `<div class="p_display">
+    template: /*html*/`
+    <div class="p_display">
         <div class="p_container">
           <div class="p_image"><img v-bind:src="image" /></div>
           <h1>{{ title }}</h1>
@@ -26,7 +25,7 @@ app.component('user_display', {
           <input
             type="button"
             value="Dislike"
-            :disabled="!likes"
+            disabled="!options[selectedOption].likes"
             @click="removeLike"
           />
         </div>
@@ -47,35 +46,33 @@ app.component('user_display', {
     },
     methods: {
         addLike() {
-            this.likes += 1
+            this.options[this.selectedOption].likes += 1;
         },
         removeLike() {
-            if (this.likes > 0) {
-                this.likes -= 1
+            if (this.options[this.selectedOption].likes > 0) {
+                this.options[this.selectedOption].likes -= 1;
             }
         },
         updateOption(index) {
-            this.selectedOption = index
-        }
+            this.selectedOption = index;
+        },
     },
     computed: {
         title() {
-            return this.alias + ' ' + this.product
+            return this.options[this.selectedOption].alias + ' ' + this.product;
         },
         available() {
-            return this.options[selectedOption].likes
+            return this.options[this.selectedOption].likes > 0;
         },
         starStatus() {
-            ratings = this.options[selectedOption].likes
-            if (ratings > 10 <= 20) {
-                return "Star"
+            const ratings = this.options[this.selectedOption].likes;
+            if (ratings > 10 && ratings <= 20) {
+                return "Star";
             } else if (ratings > 20) {
-                return " Super Star"
+                return "Super Star";
             } else {
-                return "Normal Joe"
+                return "Normal Joe";
             }
-
-            return this.starStatus
-        }
-    }
+        },
+    },
 })

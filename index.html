@@ -26,12 +26,16 @@
           </ul>
           <ul>
             <h5>similar products</h5>
-            <li v-for="option in options" :key="option.id">
+            <li
+              v-for="option in options"
+              :key="option.id"
+              @mouseover="updateImage(option.image)"
+            >
               {{ option.alias }}
             </li>
           </ul>
-          <input type="button" value="Like" @click="add_like" />
-          <input type="button" value="Dislike" @click="remove_like" />
+          <input type="button" value="Like" @click="addLike" />
+          <input type="button" value="Dislike" @click="removeLike" />
         </div>
       </div>
     </div>

@@ -7,20 +7,23 @@ const app = Vue.createApp({
             available: true,
             details: ['chases birds', 'friendly to rats', 'blue eyes'],
             options: [
-                { id: 007, product: 'james', alias: 'bond' },
-                { id: 13, product: 'lucky', alias: 'summer' }
+                { id: 007, product: 'james', alias: 'bond', image: './assets/images/cat-2.jpeg' },
+                { id: 13, product: 'lucky', alias: 'summer', image: './assets/images/cat-1.jpeg' }
             ],
             likes: 10
         }
     },
     methods: {
-        add_like() {
+        addLike() {
             this.likes += 1
         },
-        remove_like() {
+        removeLike() {
             if (this.likes > 0) {
                 this.likes -= 1
             }
+        },
+        updateImage(optionImage) {
+            this.image = optionImage
         }
     }
 })

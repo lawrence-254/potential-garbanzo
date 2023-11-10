@@ -10,7 +10,7 @@ const app = Vue.createApp({
                 { id: 007, product: 'james', alias: 'bond', image: './assets/images/cat-2.jpeg' },
                 { id: 13, product: 'lucky', alias: 'summer', image: './assets/images/cat-1.jpeg' }
             ],
-            likes: 10
+            likes: 0
         }
     },
     methods: {

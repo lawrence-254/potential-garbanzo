@@ -25,7 +25,7 @@ app.component('user_display', {
           <input
             type="button"
             value="Dislike"
-            disabled="!options[selectedOption].likes"
+            :disabled="!options[selectedOption].likes"
             @click="removeLike"
           />
         </div>

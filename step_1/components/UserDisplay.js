@@ -13,7 +13,7 @@ app.component('user_display', {
           <p>{{ description }}</p>
           <p v-if="available">Available</p>
           <p v-else>Out of stock</p>
-        <p>hunter: {{ hunter }}</p>
+        <p>hobbies: {{ hunter }}</p>
           <ul>
             <h5>characteristics</h5>
             <li v-for="detail in details">{{ detail }}</li>
@@ -36,6 +36,7 @@ app.component('user_display', {
             @click="removeLike"
           />
         </div>
+        <review_list/>
         <comment_box @submit_comment="comment_rate"/>
       </div>`,
     data() {
@@ -89,7 +90,7 @@ app.component('user_display', {
         },
         hunter() {
             if (this.lives >= 5) {
-                return "Occasionally, has " + this.lives + " lives";
+                return "Occasionally hunts, and has " + this.lives + " lives";
             }
             return "Number of lives " + this.lives + ", Too lazy to hunt"
         },

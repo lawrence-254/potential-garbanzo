@@ -3,11 +3,11 @@ app.component('comment-box', {
 <form class="comment">
     <h5>Comment on your star</h5>
     <label for="name">Name:</label>
-    <input id="name"/>
+    <input id="name" v-model="name"/>
     <label for="comments">Comments</label>
-    <textarea id="comments"></textarea>
+    <textarea id="comments" v-model="comments"></textarea>
     <label for="ratings">Stars</label>
-    <select id="ratings">
+    <select id="ratings" v-model="ratings">
         <option>1</option>
         <option>2</option>
         <option>3</option>

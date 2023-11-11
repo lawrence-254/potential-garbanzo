@@ -7,7 +7,7 @@ app.component('comment-box', {
     <label for="comments">Comments</label>
     <textarea id="comments" v-model="comments"></textarea>
     <label for="ratings">Stars</label>
-    <select id="ratings" v-model="ratings">
+    <select id="ratings" v-model.number="ratings">
         <option>1</option>
         <option>2</option>
         <option>3</option>

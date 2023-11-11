@@ -1,12 +1,19 @@
 app.component('user_display', {
+    props: {
+        lives: {
+            type: Number,
+            required: true
+        }
+    },
     template: /*html*/`
     <div class="p_display">
         <div class="p_container">
-          <div class="p_image"><img v-bind:src="image" /></div>
+          <div ><img v-bind:src="image" class="p_image"/></div>
           <h1>{{ title }}</h1>
           <p>{{ description }}</p>
           <p v-if="available">Available</p>
           <p v-else>Out of stock</p>
+        <p>hunter: {{ hunter }}</p>
           <ul>
             <h5>characteristics</h5>
             <li v-for="detail in details">{{ detail }}</li>
@@ -21,7 +28,7 @@ app.component('user_display', {
               {{ option.alias }}
             </li>
           </ul>
-          <input type="button" value="Like" @click="addLike" />
+          <input type="button" value="Like" @click="addLike" @add_like="update_likes" />
           <input
             type="button"
             value="Dislike"
@@ -46,7 +53,8 @@ app.component('user_display', {
     },
     methods: {
         addLike() {
-            this.options[this.selectedOption].likes += 1;
+            this.$emit(add_like);
+            // this.options[this.selectedOption].likes += 1;
         },
         removeLike() {
             if (this.options[this.selectedOption].likes > 0) {
@@ -73,6 +81,12 @@ app.component('user_display', {
             } else {
                 return "Normal Joe";
             }
+        },
+        hunter() {
+            if (this.lives >= 5) {
+                return "Occasionally, has " + this.lives + " lives";
+            }
+            return "Number of lives " + this.lives + ", Too lazy to hunt"
         },
     },
 })

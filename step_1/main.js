@@ -1,8 +1,13 @@
 const app = Vue.createApp({
     data() {
         return {
-            likes: 0
+            likes: 0,
+            lives: 7
         }
     },
-    methods: {}
+    methods: {
+        update_likes() {
+            this.likes += 1;
+        }
+    }
 })

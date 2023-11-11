@@ -4,8 +4,8 @@ app.component('comment-box', {
     <h5>Comment on your star</h5>
     <label for="name">Name:</label>
     <input id="name"/>
-    <label for="comment">Comments</label>
-    <textarea id="comment"></textarea>
+    <label for="comments">Comments</label>
+    <textarea id="comments"></textarea>
     <label for="ratings">Stars</label>
     <select id="ratings">
         <option>1</option>
@@ -20,6 +20,12 @@ app.component('comment-box', {
     </select>
 
     <input type="submit" value="submit"/>
-</form>
-    `
+</form>`,
+    data() {
+        return {
+            name: "",
+            comments: "",
+            ratings: null
+        }
+    }
 })

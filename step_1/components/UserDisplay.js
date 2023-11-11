@@ -36,7 +36,7 @@ app.component('user_display', {
             @click="removeLike"
           />
         </div>
-        <review_list :reviews="comments_reviews"/>
+        <review_list v-if="comments_reviews.length" :comments_reviews="comments_reviews"/>
         <comment_box @submit_comment="comment_rate"/>
       </div>`,
     data() {

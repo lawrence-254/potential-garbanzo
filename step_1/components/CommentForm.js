@@ -30,6 +30,9 @@ app.component('comment_box', {
     },
     methods: {
         onSubmit() {
+            if (this.name == '' || this.comments == '' || this.ratings == null) {
+                alert("error, fields cannot be blank")
+            }
             let userRated = {
                 name: this.name,
                 comments: this.comments,

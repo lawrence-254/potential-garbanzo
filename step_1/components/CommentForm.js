@@ -1,6 +1,6 @@
 app.component('comment-box', {
     template: /*html*/`
-<form class="comment">
+<form class="comment" @submit.prevent="onSubmit">
     <h5>Comment on your star</h5>
     <label for="name">Name:</label>
     <input id="name" v-model="name"/>
@@ -26,6 +26,20 @@ app.component('comment-box', {
             name: "",
             comments: "",
             ratings: null
+        }
+    },
+    methods: {
+        onSubmit() {
+            let userRated = {
+                name: this.name,
+                comments: this.comments,
+                ratings: this.ratings
+            }
+            this.$emit('submit-user-rated', userRated);
+
+            this.name = '';
+            this.comments = '';
+            this.ratings = null;
         }
     }
 })

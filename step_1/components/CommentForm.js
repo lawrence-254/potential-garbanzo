@@ -1,4 +1,4 @@
-app.component('comment-box', {
+app.component('comment_box', {
     template: /*html*/`
 <form class="comment" @submit.prevent="onSubmit">
     <h5>Comment on your star</h5>

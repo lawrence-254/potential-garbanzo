@@ -36,6 +36,7 @@ app.component('user_display', {
             @click="removeLike"
           />
         </div>
+        <comment_box @submit_comment="comment_rate"/>
       </div>`,
     data() {
         return {
@@ -48,7 +49,8 @@ app.component('user_display', {
             options: [
                 { id: 007, product: 'james', alias: 'bond', image: './assets/images/cat-2.jpeg', likes: 10 },
                 { id: 13, product: 'lucky', alias: 'summer', image: './assets/images/cat-1.jpeg', likes: 4 }
-            ]
+            ],
+            comments_reviews: []
         }
     },
     methods: {
@@ -64,6 +66,9 @@ app.component('user_display', {
         updateOption(index) {
             this.selectedOption = index;
         },
+        comment_rate(review) {
+            this.comment_rate.push(review)
+        }
     },
     computed: {
         title() {

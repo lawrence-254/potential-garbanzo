@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Laravel</title>
+        <title>E-SHOP</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -18,6 +18,8 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
         <!-- tailwind -->
         <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+        <!-- Scripts -->
+        @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     </head>
     <body class="antialiased">
                 <div class="relative sm:flex sm:justify-center sm:items-center min-h-screen  bg-center bg-gray-100  selection:bg-red-500 selection:text-white">
@@ -47,9 +49,10 @@
                 <div class="flex justify-center">
                      <h1>SHOP</h1>
 
-            </div>
-<!-- contenrt here -->
-<!-- end of content -->
+            </div id="app">
+            <!-- contenrt here -->
+            @yield('content')
+            <!-- end of content -->
              </div>
         </div>
         <div class="flex justify-center mt-16 px-0 sm:items-center sm:justify-between">

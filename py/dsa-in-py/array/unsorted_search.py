@@ -7,7 +7,7 @@ def searchElem(arr, arr_size, key):
     returns the searched items if found else returns -1
     '''
     for i in range(arr_size):
-        '''iterates through the array to serach for the given value'''
+        '''iterates through the array to search for the given value'''
         if (arr[i]== key):
             return i
     return -1

@@ -8,8 +8,9 @@ def insert_at_the_end(arr, item):
     arr.append(item)
 
 if __name__ == '__main__':
-    odd = [1, 3. 5, 7, 9]
+    odd = [1, 3, 5, 7, 9]
     no = 11
+    print('before:', odd)
 
     insert(odd, no)
-    print(odd)
+    print('after:', odd)

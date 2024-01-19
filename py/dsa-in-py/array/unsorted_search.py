@@ -13,8 +13,8 @@ def searchElem(arr, arr_size, key):
     return -1
 
 if __name__ == '__main__':
-    arr = [12, 34, 10,6 40]
-    key = 40
+    arr = [1, 3, 5, 7, 9]
+    key = 9
     arr_size = len(arr)
 
     item = searchElem(arr, arr_size, key)

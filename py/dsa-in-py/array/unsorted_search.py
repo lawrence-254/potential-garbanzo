@@ -19,6 +19,6 @@ if __name__ == '__main__':
 
     item = searchElem(arr, arr_size, key)
     if item != -1:
-        print('element is at index: ' + str(index))
+        print('element is at index: ' + str(item))
     else:
         print('not found')

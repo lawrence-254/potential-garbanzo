@@ -21,19 +21,51 @@ class Storage:
     def __init__(self,):
         self.connection = MySQLdb.connect(host='localhost', user='root', password='', db='marks')
         self.cursor = self.connection.cursor()
-        self.students = []
+        self.students = self.fetch_all_students()
+
+    def fetch_all_students(self):
+        students = []
+        query = """
+        SELECT students.name, students.email, corrections.link
+        FROM students
+        LEFT JOIN corrections ON students.id = corrections.student_id
+        """
+        self.cursor.execute(query)
+        current_student = None
+        for row in self.cursor.fetchall():
+            name, email, link = row
+            if not current_student or current_student.email != email:
+                current_student = Student(name,email)
+                students.append(current_student)
+            if link:
+                current_student.add_correction(Correction(link))
+        return students
 
     def add_student(self, name, email):
         new_student = Student(name,email)
         self.students.append(new_student)
         query = "INSERT INTO students (name, email) VALUES (%s, %s)"
         self.cursor.execute(query, (name, email))
+        print('student added successfully')
+        self.connection.commit()
 
     def add_correction(self, std_email, link):
         for student in self.students:
             if student.email == std_email:
                 correction = Correction(link)
                 student.add_correction(correction)
+
+                query = "SELECT id FROM students WHERE email = %s"
+                self.cursor.execute(query, (std_email))
+                std_id = self.cursor.fetchone()[0]
+
+                query = "INSERT INTO corrections (link, student_id) VALUES (%s, %s)"
+                self.cursor.execute(query,(link, std_id))
+                print('correction successful')
+                self.connection.commit()
+            else:
+                print('email not found')
+
 
     def list_students(self):
         for student in self.students:

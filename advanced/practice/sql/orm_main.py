@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 import cmd
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy import Column, Integer, ForeignKey, String
 
 Base = declarative_base()
 class Student(Base):
     __tablename__ = 'students'
-    id = Column(integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
     email = Column(String(100), unique=True)
     name = Column(String(50))
-    corrections = relationship('corrections', back_populates='students')
+    correction = relationship('corrections', back_populates='students')
 
     def add_correction(self, correction):
         self.corrections.append(correction)
 
 
-class Correction:
-    def __init__(self, link):
-        self.link = link
+class Correction(Base):
+    id = Column(Integer, primary_key=True)
+    link = Column(string(200))
+    student_id = Column(Integer, ForeignKey('students.id'))
+    student = relationship('students', back_populates='corrections')
 
 
 class Storage:

@@ -20,7 +20,7 @@ class TestingStringMethods(unittest.TestCase):
         splits a word at space or specified differentiator
         '''
         s = 'hello python3'
-        self.assertEqual(s.split(), [hello python3])
+        self.assertEqual(s.split(), [hello, python3])
 
         with self.assertRaises(TypeError):
             s.split(2)

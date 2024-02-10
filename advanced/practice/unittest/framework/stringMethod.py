@@ -15,6 +15,10 @@ class TestingStringMethods(unittest.TestCase):
         '''
         self.assertEqual('foo'.upper(), 'FOO')
 
+    def test_isupper(self):
+        self.assertTrue('FOO'.isupper())
+        self.assertFalse('foo'.isupper())
+
     def test_split(self):
         '''
         splits a word at space or specified differentiator

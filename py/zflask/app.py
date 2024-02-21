@@ -3,9 +3,11 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
+COURSES = ['Arts','Education','Humanities','Medicine', 'science','Tech']
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', courses=COURSES)
 
 @app.route('/register', methods=["get", "post"])
 def register():

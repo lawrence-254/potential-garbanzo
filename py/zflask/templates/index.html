@@ -10,10 +10,9 @@
   />
   <select name="course" id="">
     <option value="" selected disabled="disabled">choose your dormain</option>
-    <option value="med">Medicine</option>
-    <option value="tech">Tech</option>
-    <option value="science">Science</option>
-    <option value="ed">education</option>
+    {% for course in courses %}
+     <option value="{{ course }}">{{ course }}</option>
+    {% endfor %}
   </select>
   <button type="submit">register</button>
 </form>

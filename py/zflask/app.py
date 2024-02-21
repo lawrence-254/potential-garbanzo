@@ -13,8 +13,9 @@ def index():
 def register():
     name = request.form.get("name")
     area = request.form.get("course")
-    if not name or not area:
+    if not name or area not in COURSES:
         return "failure"
+
     return render_template('register.html', area=area, name=name)
 
 

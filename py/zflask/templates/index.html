@@ -1,4 +1,13 @@
-{% extends "layout.html" %}
-{% block body %}
+{% extends "layout.html" %} {% block body %}
 <h1>hello from index</h1>
+<form action="/greet" method="get">
+  <input
+    autocomplete="off"
+    autofocus
+    name="name"
+    type="text"
+    placeholder="Name"
+  />
+  <button type="submit">greet</button>
+</form>
 {% endblock %}

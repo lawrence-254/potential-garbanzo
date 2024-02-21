@@ -7,10 +7,13 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app.route('/greet')
-def greet():
-    name = request.args.get("name", "world")
-    return render_template('greet.html', name=name)
+@app.route('/register', methods=["get", "post"])
+def register():
+    name = request.form.get("name")
+    area = request.form.get("course")
+    if not name or not area:
+        return "failure"
+    return render_template('register.html', area=area, name=name)
 
 
 if __name__=="__main__":

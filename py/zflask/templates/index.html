@@ -1,6 +1,6 @@
 {% extends "layout.html" %} {% block body %}
-<h1>hello from index</h1>
-<form action="/greet" method="get">
+<h1>Sign up</h1>
+<form action="/register" method="post">
   <input
     autocomplete="off"
     autofocus
@@ -8,6 +8,13 @@
     type="text"
     placeholder="Name"
   />
-  <button type="submit">greet</button>
+  <select name="course" id="">
+    <option value="" selected disabled="disabled">choose your dormain</option>
+    <option value="med">Medicine</option>
+    <option value="tech">Tech</option>
+    <option value="science">Science</option>
+    <option value="ed">education</option>
+  </select>
+  <button type="submit">register</button>
 </form>
 {% endblock %}

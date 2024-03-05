@@ -15,7 +15,7 @@ import { createApp } from 'vue';
 
 const app = createApp({});
 
-import ExampleComponent from './components/AddToCart.vue';
+import AddToCart from './components/AddToCart.vue';
 app.component('add-to-cart-button', AddToCart);
 
 /**

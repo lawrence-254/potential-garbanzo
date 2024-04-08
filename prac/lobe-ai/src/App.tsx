@@ -1,14 +1,12 @@
 
 import './App.css'
-import Examples from './pages/Examples'
-// import Tours from './pages/Tours'
+import Tours from './pages/Tours'
 
 function App() {
 
   return (
     <>
-    {/* <Tours/> */}
-    <Examples/>
+    <Tours/>
     </>
   )
 }

@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import db from "./config/database"; // SQLite connection
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
+import postRoutes from "./routes/postRoutes";
 
 dotenv.config();
 
@@ -25,7 +26,8 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users",  userRoutes)
+app.use("/api/users",  userRoutes);
+app.use("/api/posts", postRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({

@@ -11,3 +11,55 @@
 .home-page p {
   color: var(--color-text-muted);
 }
+
+.home {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.home__header {
+  margin-bottom: 20px;
+}
+
+.home__header h1 {
+  font-size: 28px;
+}
+
+.home__header p {
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+}
+
+.home__feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.home__status,
+.home__empty {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+}
+
+.home__status {
+  color: var(--color-text-secondary);
+}
+
+.home__status--error {
+  color: var(--color-danger);
+}
+
+.home__empty h2 {
+  font-size: 20px;
+}
+
+.home__empty p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+}

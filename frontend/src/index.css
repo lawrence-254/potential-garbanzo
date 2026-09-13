@@ -122,3 +122,12 @@ img {
     border-color 0.2s ease,
     color 0.2s ease;
 }
+
+.auth-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+}

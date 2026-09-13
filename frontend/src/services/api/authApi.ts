@@ -20,6 +20,11 @@ export interface AuthUser {
   bio?: string;
   avatar?: string;
 }
+export interface ProfileUser extends AuthUser {
+  followersCount: number;
+  followingCount: number;
+  createdAt?: string;
+}
 
 interface AuthResponse {
   success: boolean;
@@ -56,6 +61,29 @@ export async function getCurrentUser(): Promise<AuthUser> {
     success: boolean;
     user: AuthUser;
   }>("/auth/me");
+
+  return response.user;
+}
+
+export async function getMyProfile(): Promise<ProfileUser> {
+  const response = await apiRequest<{
+    success: boolean;
+    user: ProfileUser;
+  }>("/users/me");
+
+  return response.user;
+}
+export async function updateMyProfile(data: {
+  displayName: string;
+  bio: string;
+}): Promise<ProfileUser> {
+  const response = await apiRequest<{
+    success: boolean;
+    user: ProfileUser;
+  }>("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 
   return response.user;
 }

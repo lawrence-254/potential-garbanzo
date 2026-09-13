@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button/Button";
 import { loginUser } from "../../services/api/authApi";
 import "./Login.css";
+import { useAuth } from "../../context/authContext/authContext";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const {refreshUser} = useAuth()
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,7 +33,7 @@ export default function Login() {
         email,
         password,
       });
-
+      await refreshUser();
       navigate("/");
     } catch (err) {
       setError(

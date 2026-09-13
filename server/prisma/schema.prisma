@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  email       String   @unique
+  password    String
+  displayName String
+  bio         String   @default("")
+  avatar      String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  followers   Follow[] @relation("followers")
+  following   Follow[] @relation("following")
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User @relation(
+    "following",
+    fields: [followerId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  following   User @relation(
+    "followers",
+    fields: [followingId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}

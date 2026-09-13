@@ -1,3 +1,17 @@
+// import prisma from "./prisma";
+
+// export async function connectDatabase() {
+//   try {
+//     await prisma.$connect();
+
+//     console.log("SQLite database connected");
+//   } catch (error) {
+//     console.error("SQLite database connection failed:", error);
+
+//     process.exit(1);
+//   }
+// }
+
 import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';

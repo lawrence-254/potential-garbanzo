@@ -1,0 +1,131 @@
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--color-background);
+}
+
+.login__card {
+  width: 100%;
+  max-width: 460px;
+  padding: 40px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.login__brand {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.login__logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.login__brand h1 {
+  margin-bottom: 8px;
+  color: var(--color-text);
+  font-size: 28px;
+}
+
+.login__brand p {
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.login__field label {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.login__field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-background);
+  color: var(--color-text);
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.login__field input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.login__field input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.login__error {
+  padding: 12px 14px;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: color-mix(
+    in srgb,
+    var(--color-danger) 10%,
+    var(--color-surface)
+  );
+  color: var(--color-danger);
+  font-size: 14px;
+}
+
+.login__register {
+  margin-top: 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.login__register a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.login__register a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 500px) {
+  .login {
+    padding: 16px;
+  }
+
+  .login__card {
+    padding: 28px 20px;
+  }
+
+  .login__brand h1 {
+    font-size: 24px;
+  }
+}

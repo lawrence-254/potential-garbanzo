@@ -115,3 +115,50 @@
   background: var(--color-surface-hover);
   color: var(--color-primary);
 }
+
+.post-card__menu {
+  position: relative;
+}
+
+.post-card__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  min-width: 150px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.post-card__delete {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-danger);
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.post-card__delete:hover {
+  background: var(--color-surface-hover);
+}
+
+.post-card__delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.post-card__action--liked {
+  color: var(--color-danger) !important;
+}
+
+.post-card__action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}

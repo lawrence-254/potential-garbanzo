@@ -7,6 +7,8 @@ import db from "./config/database"; // SQLite connection
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
 import postRoutes from "./routes/postRoutes";
+import likeRoutes from "./routes/likeRoutes";
+import commentRoutes from "./routes/commentRoutes";
 
 dotenv.config();
 
@@ -28,6 +30,8 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/users",  userRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/likes", likeRoutes);
+app.use("/api/comments", commentRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({

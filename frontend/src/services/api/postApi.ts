@@ -14,7 +14,12 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   authorId: string;
+
   author: PostAuthor;
+
+  likeCount: number;
+  commentCount: number;
+  likedByCurrentUser: boolean;
 }
 
 interface CreatePostResponse {
@@ -49,4 +54,15 @@ export async function getPosts(): Promise<Post[]> {
   );
 
   return response.posts;
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  try {
+    await apiRequest<void>(`/posts/${postId}`, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    console.error(`Failed to delete post with ID ${postId}:`, error);
+    throw error;
+  }
 }

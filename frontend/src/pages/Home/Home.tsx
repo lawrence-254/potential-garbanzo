@@ -32,7 +32,13 @@ export default function Home() {
       setLoading(false);
     }
   };
-
+const handlePostDeleted = (postId: string) => {
+  setPosts((currentPosts) =>
+    currentPosts.filter(
+      (post) => post.id !== postId,
+    ),
+  );
+};
   useEffect(() => {
     loadPosts();
   }, []);
@@ -76,6 +82,7 @@ export default function Home() {
             <PostCard
               key={post.id}
               post={post}
+              onPostDeleted={handlePostDeleted}
             />
           ))}
       </section>

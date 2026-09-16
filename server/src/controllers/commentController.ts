@@ -1,9 +1,8 @@
 import { Response } from "express";
-
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 
-export async function createPost(
+export async function createComment(
   req: AuthRequest,
   res: Response,
 ) {
@@ -15,39 +14,57 @@ export async function createPost(
       });
     }
 
-    const { content, image } = req.body;
+    const { postId } = req.params;
+    const { content } = req.body;
+
+    if (!postId) {
+      return res.status(400).json({
+        success: false,
+        message: "Post ID is required",
+      });
+    }
 
     if (typeof content !== "string") {
       return res.status(400).json({
         success: false,
-        message: "Post content is required",
+        message: "Comment content is required",
       });
     }
 
-    const normalizedContent = content.trim();
+    const trimmedContent = content.trim();
 
-    if (!normalizedContent) {
+    if (!trimmedContent) {
       return res.status(400).json({
         success: false,
-        message: "Post cannot be empty",
+        message: "Comment cannot be empty",
       });
     }
 
-    if (normalizedContent.length > 500) {
+    if (trimmedContent.length > 500) {
       return res.status(400).json({
         success: false,
-        message: "Post cannot exceed 500 characters",
+        message: "Comment cannot exceed 500 characters",
       });
     }
 
-    const post = await prisma.post.create({
+    const post = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+    });
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    const comment = await prisma.comment.create({
       data: {
-        content: normalizedContent,
-        image:
-          typeof image === "string" && image.trim()
-            ? image.trim()
-            : null,
+        content: trimmedContent,
         authorId: req.userId,
+        postId,
       },
       include: {
         author: {
@@ -63,20 +80,19 @@ export async function createPost(
 
     return res.status(201).json({
       success: true,
-      message: "Post created successfully",
-      post,
+      comment,
     });
   } catch (error) {
-    console.error("Create post error:", error);
+    console.error("Create comment error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to create post",
+      message: "Failed to create comment",
     });
   }
 }
 
-export async function getPosts(
+export async function getComments(
   req: AuthRequest,
   res: Response,
 ) {
@@ -88,9 +104,34 @@ export async function getPosts(
       });
     }
 
-    const posts = await prisma.post.findMany({
+    const { postId } = req.params;
+
+    if (!postId) {
+      return res.status(400).json({
+        success: false,
+        message: "Post ID is required",
+      });
+    }
+
+    const post = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+    });
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    const comments = await prisma.comment.findMany({
+      where: {
+        postId,
+      },
       orderBy: {
-        createdAt: "desc",
+        createdAt: "asc",
       },
       include: {
         author: {
@@ -101,54 +142,24 @@ export async function getPosts(
             avatar: true,
           },
         },
-
-        _count: {
-          select: {
-            likes: true,
-            commets:true,
-          },
-        },
-
-        likes: {
-          where: {
-            userId: req.userId,
-          },
-          select: {
-            id: true,
-          },
-        },
       },
     });
 
-    const formattedPosts = posts.map((post:any) => ({
-      id: post.id,
-      content: post.content,
-      image: post.image,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      authorId: post.authorId,
-      author: post.author,
-
-      likeCount: post._count.likes,
-      commentCount: post._count.comments,
-      likedByCurrentUser: post.likes.length > 0,
-    }));
-
     return res.status(200).json({
       success: true,
-      posts: formattedPosts,
+      comments,
     });
   } catch (error) {
-    console.error("Get posts error:", error);
+    console.error("Get comments error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to retrieve posts",
+      message: "Failed to retrieve comments",
     });
   }
 }
 
-export async function deletePost(
+export async function deleteComment(
   req: AuthRequest,
   res: Response,
 ) {
@@ -165,33 +176,31 @@ export async function deletePost(
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Post ID is required",
+        message: "Comment ID is required",
       });
     }
 
-    const post = await prisma.post.findUnique({
+    const comment = await prisma.comment.findUnique({
       where: {
         id,
       },
     });
 
-    if (!post) {
+    if (!comment) {
       return res.status(404).json({
         success: false,
-        message: "Post not found",
+        message: "Comment not found",
       });
     }
 
-    // Important security check:
-    // users can only delete their own posts.
-    if (post.authorId !== req.userId) {
+    if (comment.authorId !== req.userId) {
       return res.status(403).json({
         success: false,
-        message: "You can only delete your own posts",
+        message: "You can only delete your own comments",
       });
     }
 
-    await prisma.post.delete({
+    await prisma.comment.delete({
       where: {
         id,
       },
@@ -199,14 +208,14 @@ export async function deletePost(
 
     return res.status(200).json({
       success: true,
-      message: "Post deleted successfully",
+      message: "Comment deleted successfully",
     });
   } catch (error) {
-    console.error("Delete post error:", error);
+    console.error("Delete comment error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to delete post",
+      message: "Failed to delete comment",
     });
   }
 }

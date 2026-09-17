@@ -12,8 +12,11 @@ import { useAuth } from "../../../context/authContext/authContext";
 import { logoutUser } from "../../../services/api/authApi";
 
 import "./Navbar.css";
+import NotificationPanel from "../../notifications/NotificationPanel/NotificationPanel";
 export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showNotifications, setShowNotifications] =
+  useState(false);
   const navigate = useNavigate();
   const { user, clearUser } = useAuth();
 
@@ -48,6 +51,7 @@ export default function Navbar() {
   }
   onKeyDown={(event) => {
     if (event.key === "Enter") {
+      setShowNotifications(false);
       navigate(
         `/explore?q=${encodeURIComponent(
           searchQuery,
@@ -61,13 +65,25 @@ export default function Navbar() {
 </div>
 
       <div className="navbar__actions">
+  <div className="navbar__notification">
   <button
-    className="navbar__icon-button"
     type="button"
+    className="navbar__icon-button"
+    onClick={() =>
+      setShowNotifications((current) => !current)
+    }
     aria-label="Notifications"
+    aria-expanded={showNotifications}
   >
     <Bell size={20} />
   </button>
+
+  {showNotifications && (
+    <NotificationPanel
+      onClose={() => setShowNotifications(false)}
+    />
+  )}
+</div>
 
   <button
     className="navbar__icon-button"
@@ -81,7 +97,10 @@ export default function Navbar() {
             className="navbar__avatar"
             type="button"
             aria-label="Open profile"
-            onClick={() => navigate("/profile")}
+            onClick={() => {
+  setShowNotifications(false);
+  navigate("/profile");
+}}
           >
             {user?.displayName?.charAt(0).toUpperCase() || "U"}
           </button>

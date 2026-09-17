@@ -9,6 +9,7 @@ import userRoutes from "./routes/userRoutes";
 import postRoutes from "./routes/postRoutes";
 import likeRoutes from "./routes/likeRoutes";
 import commentRoutes from "./routes/commentRoutes";
+import followRoutes from "./routes/followRoutes";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use("/api/users",  userRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/likes", likeRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/follows", followRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({

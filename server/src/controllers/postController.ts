@@ -89,9 +89,27 @@ export async function getPosts(
     }
 
     const posts = await prisma.post.findMany({
+      where: {
+        OR: [
+          {
+            authorId: req.userId,
+          },
+          {
+            author: {
+              followers: {
+                some: {
+                  followerId: req.userId,
+                },
+              },
+            },
+          },
+        ],
+      },
+
       orderBy: {
         createdAt: "desc",
       },
+
       include: {
         author: {
           select: {
@@ -105,7 +123,7 @@ export async function getPosts(
         _count: {
           select: {
             likes: true,
-            commets:true,
+            comments: true,
           },
         },
 
@@ -120,7 +138,7 @@ export async function getPosts(
       },
     });
 
-    const formattedPosts = posts.map((post:any) => ({
+    const formattedPosts = posts.map((post) => ({
       id: post.id,
       content: post.content,
       image: post.image,
@@ -139,7 +157,7 @@ export async function getPosts(
       posts: formattedPosts,
     });
   } catch (error) {
-    console.error("Get posts error:", error);
+    console.error("Get personalized posts error:", error);
 
     return res.status(500).json({
       success: false,

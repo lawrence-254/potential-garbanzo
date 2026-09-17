@@ -6,6 +6,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../context/authContext/authContext";
 import {deletePost, type Post } from "../../../services/api/postApi";
@@ -27,6 +28,7 @@ export default function PostCard({
   onPostDeleted,
 }: PostCardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [showMenu, setShowMenu] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -41,6 +43,9 @@ const [likeCount, setLikeCount] = useState(
 const [likeLoading, setLikeLoading] =
   useState(false);
 const [showComments, setShowComments] = useState(false);
+const [commentCount, setCommentCount] = useState(
+  post.commentCount,
+);
 
   const isOwner = user?.id === post.authorId;
   const formattedDate = new Date(
@@ -112,7 +117,15 @@ const [showComments, setShowComments] = useState(false);
   return (
     <article className="post-card">
       <div className="post-card__header">
-        <div className="post-card__author">
+        <button
+        type="button"
+         className="post-card__author"
+          onClick={() =>
+    navigate(
+      `/profile/${post.author.username}`,
+    )
+  }
+         >
           <div className="post-card__avatar">
             {post.author.avatar ? (
               <img
@@ -133,7 +146,7 @@ const [showComments, setShowComments] = useState(false);
               @{post.author.username} · {formattedDate}
             </span>
           </div>
-        </div>
+        </button>
 {isOwner && (
           <div className="post-card__menu">
             <button
@@ -206,7 +219,7 @@ const [showComments, setShowComments] = useState(false);
         onClick={()=>setShowComments((current)=>!current)}
         >
           <MessageCircle size={19} />
-          <span>{post.commentCount}</span>
+          <span>{commentCount}</span>
         </button>
 
         <button type="button">
@@ -214,7 +227,7 @@ const [showComments, setShowComments] = useState(false);
         </button>
 
       </div>
-      {showComments && (<CommentSection postId={post.id}/>)}
+      {showComments && (<CommentSection postId={post.id} onCommentCountChange={setCommentCount}/>)}
     </article>
   );
 }

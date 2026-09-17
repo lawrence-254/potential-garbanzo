@@ -1,0 +1,145 @@
+.public-profile {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.public-profile__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.public-profile__back:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+
+.public-profile__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.public-profile__avatar {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.public-profile__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.public-profile__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.public-profile__info h1 {
+  font-size: 26px;
+}
+
+.public-profile__username {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+}
+
+.public-profile__bio {
+  margin-top: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.public-profile__stats {
+  display: flex;
+  gap: 22px;
+  margin-top: 16px;
+}
+
+.public-profile__stats span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.public-profile__stats strong {
+  color: var(--color-text);
+}
+
+.public-profile__posts {
+  margin-top: 24px;
+}
+
+.public-profile__posts h2 {
+  margin-bottom: 14px;
+  font-size: 20px;
+}
+
+.public-profile__feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.public-profile__empty,
+.public-profile__status {
+  padding: 36px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.public-profile__empty h3 {
+  font-size: 18px;
+}
+
+.public-profile__empty p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+}
+
+.public-profile__status {
+  color: var(--color-text-secondary);
+}
+
+.public-profile__status--error {
+  color: var(--color-danger);
+}
+
+@media (max-width: 600px) {
+  .public-profile__header {
+    flex-wrap: wrap;
+  }
+
+  .public-profile__info {
+    min-width: calc(100% - 116px);
+  }
+
+  .public-profile__header .follow-button {
+    width: 100%;
+  }
+}

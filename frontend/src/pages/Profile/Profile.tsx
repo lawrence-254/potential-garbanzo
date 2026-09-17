@@ -11,6 +11,7 @@ import {
   updateMyProfile,
   type ProfileUser,
 } from "../../services/api/authApi";
+import FollowButton from "../../components/users/FollowButton/FollowButton";
 
 import "./Profile.css";
 
@@ -114,130 +115,41 @@ export default function Profile() {
   return (
     <section className="profile">
       <div className="profile__header">
-        <div className="profile__cover" />
+  <div className="profile__avatar">
+    {profile.avatar ? (
+      <img
+        src={profile.avatar}
+        alt={profile.displayName}
+      />
+    ) : (
+      profile.displayName
+        .charAt(0)
+        .toUpperCase()
+    )}
+  </div>
 
-        <div className="profile__identity">
-          <div className="profile__avatar">
-            {profile.avatar ? (
-              <img
-                src={profile.avatar}
-                alt={profile.displayName}
-              />
-            ) : (
-              avatarLetter
-            )}
-          </div>
+  <div className="profile__info">
+    <h1>{profile.displayName}</h1>
 
-          <div className="profile__actions">
-            {!editing && (
-              <Button
-                variant="outline"
-                onClick={() => setEditing(true)}
-              >
-                <Edit3 size={17} />
-                Edit profile
-              </Button>
-            )}
-          </div>
-        </div>
+    <p>@{profile.username}</p>
 
-        <div className="profile__details">
-          {editing ? (
-            <>
-              <div className="profile__field">
-                <label htmlFor="displayName">
-                  Display name
-                </label>
+    <p>{profile.bio}</p>
 
-                <input
-                  id="displayName"
-                  value={displayName}
-                  maxLength={50}
-                  onChange={(event) =>
-                    setDisplayName(event.target.value)
-                  }
-                />
+    <div className="profile__stats">
+      <span>
+        <strong>{profile.followersCount}</strong>{" "}
+        Followers
+      </span>
 
-                <span>
-                  {displayName.length}/50
-                </span>
-              </div>
+      <span>
+        <strong>{profile.followingCount}</strong>{" "}
+        Following
+      </span>
+    </div>
+  </div>
 
-              <div className="profile__field">
-                <label htmlFor="bio">Bio</label>
-
-                <textarea
-                  id="bio"
-                  value={bio}
-                  maxLength={160}
-                  rows={4}
-                  onChange={(event) =>
-                    setBio(event.target.value)
-                  }
-                />
-
-                <span>
-                  {bio.length}/160
-                </span>
-              </div>
-
-              {error && (
-                <div className="profile__error">
-                  {error}
-                </div>
-              )}
-
-              <div className="profile__edit-actions">
-                <Button
-                  variant="ghost"
-                  onClick={handleCancel}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : "Save changes"}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h1>{profile.displayName}</h1>
-
-              <p className="profile__username">
-                @{profile.username}
-              </p>
-
-              <p className="profile__bio">
-                {profile.bio || "No bio yet."}
-              </p>
-            </>
-          )}
-        </div>
-
-        {!editing && (
-          <div className="profile__stats">
-            <div className="profile__stat">
-              <strong>{profile.followersCount}</strong>
-              <span>Followers</span>
-            </div>
-
-            <div className="profile__stat">
-              <strong>{profile.followingCount}</strong>
-              <span>Following</span>
-            </div>
-
-            <div className="profile__stat">
-              <Users size={18} />
-              <span>Member</span>
-            </div>
-          </div>
-        )}
-      </div>
+  <FollowButton userId={profile.id} />
+</div>
 
       <div className="profile__content">
         <h2>Posts</h2>

@@ -63,3 +63,17 @@
   margin-top: 6px;
   color: var(--color-text-muted);
 }
+.home__feed-header {
+  margin-top: 28px;
+  margin-bottom: 14px;
+}
+
+.home__feed-header h2 {
+  font-size: 20px;
+}
+
+.home__feed-header p {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}

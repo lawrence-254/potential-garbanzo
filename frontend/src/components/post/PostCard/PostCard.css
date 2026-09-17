@@ -162,3 +162,17 @@
   cursor: wait;
   opacity: 0.7;
 }
+
+.post-card__author {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.post-card__author:hover
+  .post-card__author-info strong {
+  color: var(--color-primary);
+}

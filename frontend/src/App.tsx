@@ -13,6 +13,7 @@ import Profile from "./pages/Profile/Profile";
 import Register from "./pages/Register/Register";
 import Login from "./pages/Login/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute/ProtectedRoute";
+import PublicProfile from "./pages/PublicProfile/PublicProfile";
 
 
 function App() {
@@ -32,6 +33,10 @@ function App() {
             <Route path="/messages" element={<Messages />} />
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/profile" element={<Profile />} />
+            <Route
+  path="/profile/:username"
+  element={<PublicProfile />}
+/>
           </Route>
         </Route>
       </Routes>

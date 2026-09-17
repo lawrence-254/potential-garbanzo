@@ -53,8 +53,15 @@ const handlePostDeleted = (postId: string) => {
       </div>
 
       <CreatePost onPostCreated={loadPosts} />
+      
 
       <section className="home__feed">
+        <div className="home__feed-header">
+    <h2>Your Feed</h2>
+    <p>
+      Posts from you and people you follow.
+    </p>
+  </div>
         {loading && (
           <div className="home__status">
             Loading posts...
@@ -66,7 +73,16 @@ const handlePostDeleted = (postId: string) => {
             {error}
           </div>
         )}
+{posts.length === 0 && !loading && !error && (
+  <div className="home__empty">
+    <h2>Your feed is empty</h2>
 
+    <p>
+      Create your first post or follow people to
+      see their posts here.
+    </p>
+  </div>
+)}
         {!loading && !error && posts.length === 0 && (
           <div className="home__empty">
             <h2>No posts yet</h2>

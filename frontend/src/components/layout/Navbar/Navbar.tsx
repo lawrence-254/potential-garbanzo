@@ -4,6 +4,7 @@ import {
   LogOut,
   Search,
 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 
@@ -12,6 +13,7 @@ import { logoutUser } from "../../../services/api/authApi";
 
 import "./Navbar.css";
 export default function Navbar() {
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { user, clearUser } = useAuth();
 
@@ -39,10 +41,23 @@ export default function Navbar() {
   />
 
   <input
-    type="search"
-    placeholder="Search"
-    aria-label="Search"
-  />
+  type="search"
+  value={searchQuery}
+  onChange={(event) =>
+    setSearchQuery(event.target.value)
+  }
+  onKeyDown={(event) => {
+    if (event.key === "Enter") {
+      navigate(
+        `/explore?q=${encodeURIComponent(
+          searchQuery,
+        )}`,
+      );
+    }
+  }}
+  placeholder="Search"
+  aria-label="Search"
+/>
 </div>
 
       <div className="navbar__actions">

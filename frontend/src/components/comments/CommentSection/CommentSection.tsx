@@ -14,10 +14,12 @@ import "./CommentSection.css";
 
 interface CommentSectionProps {
   postId: string;
+  onCommentCountChange: (count: number) => void;
 }
 
 export default function CommentSection({
   postId,
+  onCommentCountChange,
 }: CommentSectionProps) {
   const { user } = useAuth();
 
@@ -90,11 +92,12 @@ export default function CommentSection({
 
       await deleteComment(commentId);
 
-      setComments((currentComments) =>
-        currentComments.filter(
-          (comment) => comment.id !== commentId,
-        ),
-      );
+      const remainingComments = comments.filter(
+  (comment) => comment.id !== commentId,
+);
+
+setComments(remainingComments);
+onCommentCountChange(remainingComments.length);
     } catch (error) {
       setError(
         error instanceof Error

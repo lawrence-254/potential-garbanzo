@@ -2,6 +2,7 @@ import { Response } from "express";
 
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
+import { createNotification } from "../services/notificationService";
 
 export async function likePost(
   req: AuthRequest,
@@ -59,7 +60,13 @@ export async function likePost(
         postId,
       },
     });
-
+await createNotification({
+  type: "LIKE",
+  recipientId: post.authorId,
+  actorId: req.userId,
+  message: "liked your post",
+  postId,
+});
     const likeCount = await prisma.like.count({
       where: {
         postId,

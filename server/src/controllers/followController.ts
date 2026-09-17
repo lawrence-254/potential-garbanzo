@@ -2,6 +2,7 @@ import { Response } from "express";
 
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
+import { createNotification } from "../services/notificationService";
 
 export async function followUser(
   req: AuthRequest,
@@ -66,7 +67,12 @@ export async function followUser(
         followingId: userId,
       },
     });
-
+await createNotification({
+  type: "FOLLOW",
+  recipientId: userId,
+  actorId: req.userId,
+  message: "started following you",
+});
     const followerCount = await prisma.follow.count({
       where: {
         followingId: userId,

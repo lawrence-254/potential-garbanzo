@@ -1,6 +1,7 @@
 import { Response } from "express";
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
+import { createNotification } from "../services/notificationService";
 
 export async function createComment(
   req: AuthRequest,
@@ -77,7 +78,13 @@ export async function createComment(
         },
       },
     });
-
+await createNotification({
+  type: "COMMENT",
+  recipientId: post.authorId,
+  actorId: req.userId,
+  message: "commented on your post",
+  postId,
+});
     return res.status(201).json({
       success: true,
       comment,

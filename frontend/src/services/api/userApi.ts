@@ -43,7 +43,7 @@ export async function searchUsers(
     );
 
   return response.users;
-
+}
 export async function getUserProfile(
   username: string,
 ): Promise<PublicUserProfile> {

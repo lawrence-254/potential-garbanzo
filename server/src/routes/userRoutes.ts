@@ -1,35 +1,23 @@
-// import { Router } from "express";
-// import {
-//   getMyProfile,
-//   updateMyProfile,
-// } from "../controllers/userController";
-// import { requireAuth } from "../middlewares/authMiddleware";
-
-// const router = Router();
-
-// router.get("/me", requireAuth, getMyProfile);
-// router.patch("/me", requireAuth, updateMyProfile);
-
-// export default router;
-
 import { Router } from "express";
-
-import { getUserProfile, searchUsers } from "../controllers/userController";
+import {
+  getMyProfile,
+  updateMyProfile,
+  getUserProfile,
+  searchUsers,
+} from "../controllers/userController";
 import { requireAuth } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-router.get(
-  "/search",
-  requireAuth,
-  searchUsers,
-);
+// Current user routes
+router.get("/me", requireAuth, getMyProfile);
+router.patch("/me", requireAuth, updateMyProfile);
 
+// Search users
+router.get("/search", requireAuth, searchUsers);
 
-router.get(
-  "/:username",
-  requireAuth,
-  getUserProfile,
-);
+// Get another user's profile by username
+// Important: this must come after /me and /search
+router.get("/:username", requireAuth, getUserProfile);
 
 export default router;

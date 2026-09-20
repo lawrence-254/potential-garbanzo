@@ -1,13 +1,12 @@
 import { Response } from "express";
-
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 import { createNotification } from "../services/notificationService";
 
-export async function likePost(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// POST /api/likes/:postId
+//
+export async function likePost(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -18,7 +17,7 @@ export async function likePost(
 
     const { postId } = req.params;
 
-    if (!postId) {
+    if (typeof postId !== "string" || !postId.trim()) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
@@ -26,9 +25,7 @@ export async function likePost(
     }
 
     const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
+      where: { id: postId },
     });
 
     if (!post) {
@@ -60,17 +57,18 @@ export async function likePost(
         postId,
       },
     });
-await createNotification({
-  type: "LIKE",
-  recipientId: post.authorId,
-  actorId: req.userId,
-  message: "liked your post",
-  postId,
-});
+
+    // Create notification (only if liking someone else's post)
+    await createNotification({
+      type: "LIKE",
+      recipientId: post.authorId,
+      actorId: req.userId,
+      message: "liked your post",
+      postId,
+    });
+
     const likeCount = await prisma.like.count({
-      where: {
-        postId,
-      },
+      where: { postId },
     });
 
     return res.status(201).json({
@@ -80,7 +78,6 @@ await createNotification({
     });
   } catch (error) {
     console.error("Like post error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to like post",
@@ -88,10 +85,10 @@ await createNotification({
   }
 }
 
-export async function unlikePost(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// DELETE /api/likes/:postId
+//
+export async function unlikePost(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -102,7 +99,7 @@ export async function unlikePost(
 
     const { postId } = req.params;
 
-    if (!postId) {
+    if (typeof postId !== "string" || !postId.trim()) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
@@ -135,9 +132,7 @@ export async function unlikePost(
     });
 
     const likeCount = await prisma.like.count({
-      where: {
-        postId,
-      },
+      where: { postId },
     });
 
     return res.status(200).json({
@@ -147,7 +142,6 @@ export async function unlikePost(
     });
   } catch (error) {
     console.error("Unlike post error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to unlike post",

@@ -87,3 +87,16 @@
     padding: 8px 12px;
   }
 }
+
+.user-result__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.user-result__actions .message-button button {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}

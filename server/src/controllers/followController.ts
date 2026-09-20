@@ -1,13 +1,11 @@
 import { Response } from "express";
+import { Prisma } from "@prisma/client";
 
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 import { createNotification } from "../services/notificationService";
 
-export async function followUser(
-  req: AuthRequest,
-  res: Response,
-) {
+export async function followUser(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -18,7 +16,7 @@ export async function followUser(
 
     const { userId } = req.params;
 
-    if (!userId) {
+    if (typeof userId !== "string" || !userId.trim()) {
       return res.status(400).json({
         success: false,
         message: "User ID is required",
@@ -33,9 +31,7 @@ export async function followUser(
     }
 
     const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -45,48 +41,49 @@ export async function followUser(
       });
     }
 
-    const existingFollow = await prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
+    try {
+      await prisma.follow.create({
+        data: {
           followerId: req.userId,
           followingId: userId,
         },
-      },
-    });
-
-    if (existingFollow) {
-      return res.status(409).json({
-        success: false,
-        message: "You are already following this user",
       });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return res.status(409).json({
+          success: false,
+          message: "You are already following this user",
+        });
+      }
+      throw error;
     }
 
-    await prisma.follow.create({
-      data: {
-        followerId: req.userId,
-        followingId: userId,
-      },
+    // Notification failure should not fail the follow action
+    createNotification({
+      type: "FOLLOW",
+      recipientId: userId,
+      actorId: req.userId,
+      message: "started following you",
+    }).catch((err) => {
+      console.error("Failed to create follow notification:", err);
     });
-await createNotification({
-  type: "FOLLOW",
-  recipientId: userId,
-  actorId: req.userId,
-  message: "started following you",
-});
-    const followerCount = await prisma.follow.count({
-      where: {
-        followingId: userId,
-      },
-    });
+
+    const [followerCount, followingCount] = await Promise.all([
+      prisma.follow.count({ where: { followingId: userId } }),
+      prisma.follow.count({ where: { followerId: userId } }),
+    ]);
 
     return res.status(201).json({
       success: true,
       following: true,
       followerCount,
+      followingCount,
     });
   } catch (error) {
     console.error("Follow user error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to follow user",
@@ -94,10 +91,7 @@ await createNotification({
   }
 }
 
-export async function unfollowUser(
-  req: AuthRequest,
-  res: Response,
-) {
+export async function unfollowUser(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -108,52 +102,48 @@ export async function unfollowUser(
 
     const { userId } = req.params;
 
-    if (!userId) {
+    if (typeof userId !== "string" || !userId.trim()) {
       return res.status(400).json({
         success: false,
         message: "User ID is required",
       });
     }
 
-    const existingFollow = await prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: req.userId,
-          followingId: userId,
+    try {
+      await prisma.follow.delete({
+        where: {
+          followerId_followingId: {
+            followerId: req.userId,
+            followingId: userId,
+          },
         },
-      },
-    });
-
-    if (!existingFollow) {
-      return res.status(404).json({
-        success: false,
-        message: "You are not following this user",
       });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        return res.status(404).json({
+          success: false,
+          message: "You are not following this user",
+        });
+      }
+      throw error;
     }
 
-    await prisma.follow.delete({
-      where: {
-        followerId_followingId: {
-          followerId: req.userId,
-          followingId: userId,
-        },
-      },
-    });
-
-    const followerCount = await prisma.follow.count({
-      where: {
-        followingId: userId,
-      },
-    });
+    const [followerCount, followingCount] = await Promise.all([
+      prisma.follow.count({ where: { followingId: userId } }),
+      prisma.follow.count({ where: { followerId: userId } }),
+    ]);
 
     return res.status(200).json({
       success: true,
       following: false,
       followerCount,
+      followingCount,
     });
   } catch (error) {
     console.error("Unfollow user error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to unfollow user",
@@ -161,10 +151,7 @@ export async function unfollowUser(
   }
 }
 
-export async function getFollowStatus(
-  req: AuthRequest,
-  res: Response,
-) {
+export async function getFollowStatus(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -175,7 +162,7 @@ export async function getFollowStatus(
 
     const { userId } = req.params;
 
-    if (!userId) {
+    if (typeof userId !== "string" || !userId.trim()) {
       return res.status(400).json({
         success: false,
         message: "User ID is required",
@@ -183,9 +170,7 @@ export async function getFollowStatus(
     }
 
     const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
+      where: { id: userId },
     });
 
     if (!user) {
@@ -195,26 +180,18 @@ export async function getFollowStatus(
       });
     }
 
-    const follow = await prisma.follow.findUnique({
-      where: {
-        followerId_followingId: {
-          followerId: req.userId,
-          followingId: userId,
+    const [follow, followerCount, followingCount] = await Promise.all([
+      prisma.follow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: req.userId,
+            followingId: userId,
+          },
         },
-      },
-    });
-
-    const followerCount = await prisma.follow.count({
-      where: {
-        followingId: userId,
-      },
-    });
-
-    const followingCount = await prisma.follow.count({
-      where: {
-        followerId: userId,
-      },
-    });
+      }),
+      prisma.follow.count({ where: { followingId: userId } }),
+      prisma.follow.count({ where: { followerId: userId } }),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -224,7 +201,6 @@ export async function getFollowStatus(
     });
   } catch (error) {
     console.error("Get follow status error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve follow status",

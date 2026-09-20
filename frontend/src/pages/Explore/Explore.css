@@ -107,3 +107,165 @@
   margin-bottom: 12px;
   color: var(--color-primary);
 }
+
+.explore {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.explore__header {
+  margin-bottom: 20px;
+}
+
+.explore__header h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 28px;
+}
+
+.explore__header p {
+  margin: 6px 0 0;
+  color: var(--color-text-secondary);
+}
+
+.explore__search {
+  position: sticky;
+  top: calc(var(--navbar-height) + 12px);
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  width: 100%;
+  padding: 12px 14px;
+
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.explore__search > svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.explore__search input {
+  flex: 1;
+  min-width: 0;
+
+  border: 0;
+  outline: 0;
+  background: transparent;
+
+  color: var(--color-text);
+  font: inherit;
+}
+
+.explore__search input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.explore__search button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.explore__search button:hover {
+  color: var(--color-text);
+}
+
+.explore__status,
+.explore__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 60px 20px;
+  text-align: center;
+
+  color: var(--color-text-muted);
+}
+
+.explore__empty svg {
+  margin-bottom: 12px;
+  color: var(--color-primary);
+}
+
+.explore__empty h2 {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.explore__empty p {
+  max-width: 450px;
+  margin: 8px 0 0;
+}
+
+.explore__status--error {
+  color: var(--color-danger);
+}
+
+.explore__section {
+  margin-top: 28px;
+}
+
+.explore__section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.explore__section-header h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 18px;
+}
+
+.explore__section-header span {
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.explore__users,
+.explore__posts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .explore {
+    padding: 0 12px 30px;
+  }
+
+  .explore__header h1 {
+    font-size: 24px;
+  }
+
+  .explore__search {
+    top: calc(var(--navbar-height) + 8px);
+  }
+}

@@ -1,16 +1,10 @@
 import { CheckCheck, X } from "lucide-react";
-import { useEffect, useState } from "react";
 
-import {
-  getNotifications,
-  markAllNotificationsAsRead,
-  markNotificationAsRead,
-  type Notification,
-} from "../../../services/api/notficationApi";
+import { useNotifications } from "../../../context/NotiificationContext/NotificationContext";
 
 import NotificationItem from "../NotificationItem/NotificationItem";
 
-import "./NotificationPanel.css";
+import "./NotifcationPanel.css";
 
 interface NotificationPanelProps {
   onClose: () => void;
@@ -19,86 +13,13 @@ interface NotificationPanelProps {
 export default function NotificationPanel({
   onClose,
 }: NotificationPanelProps) {
-  const [notifications, setNotifications] =
-    useState<Notification[]>([]);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const data = await getNotifications();
-
-        setNotifications(data);
-      } catch (error) {
-        console.error(error);
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load notifications",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadNotifications();
-  }, []);
-
-  const unreadCount = notifications.filter(
-    (notification) => !notification.read,
-  ).length;
-
-  const handleRead = async (
-    notificationId: string,
-  ) => {
-    try {
-      await markNotificationAsRead(notificationId);
-
-      setNotifications((current) =>
-        current.map((notification) =>
-          notification.id === notificationId
-            ? {
-                ...notification,
-                read: true,
-              }
-            : notification,
-        ),
-      );
-    } catch (error) {
-      console.error(
-        "Failed to mark notification as read:",
-        error,
-      );
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    if (unreadCount === 0) {
-      return;
-    }
-
-    try {
-      await markAllNotificationsAsRead();
-
-      setNotifications((current) =>
-        current.map((notification) => ({
-          ...notification,
-          read: true,
-        })),
-      );
-    } catch (error) {
-      console.error(
-        "Failed to mark notifications as read:",
-        error,
-      );
-    }
-  };
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
 
   return (
     <div className="notification-panel">
@@ -117,7 +38,7 @@ export default function NotificationPanel({
           {unreadCount > 0 && (
             <button
               type="button"
-              onClick={handleMarkAllAsRead}
+              onClick={markAllAsRead}
               aria-label="Mark all notifications as read"
               title="Mark all as read"
             >
@@ -142,17 +63,11 @@ export default function NotificationPanel({
           </div>
         )}
 
-        {!loading && error && (
-          <div className="notification-panel__status notification-panel__status--error">
-            {error}
-          </div>
-        )}
-
         {!loading &&
-          !error &&
           notifications.length === 0 && (
             <div className="notification-panel__empty">
               <h3>No notifications yet</h3>
+
               <p>
                 When someone follows, likes, or
                 comments on your posts, you'll see
@@ -162,14 +77,13 @@ export default function NotificationPanel({
           )}
 
         {!loading &&
-          !error &&
           notifications.length > 0 && (
             <div>
               {notifications.map((notification) => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
-                  onRead={handleRead}
+                  onRead={markAsRead}
                 />
               ))}
             </div>

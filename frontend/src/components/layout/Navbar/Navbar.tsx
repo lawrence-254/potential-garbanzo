@@ -10,15 +10,21 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../context/authContext/authContext";
 import { logoutUser } from "../../../services/api/authApi";
+import { useNotifications } from "../../../context/NotiificationContext/NotificationContext";
+import { useMessages } from "../../../context/MessageContext/MessageContext";
 
 import "./Navbar.css";
 import NotificationPanel from "../../notifications/NotificationPanel/NotificationPanel";
+
+
 export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] =
   useState(false);
   const navigate = useNavigate();
   const { user, clearUser } = useAuth();
+  const { unreadCount: notificationUnreadCount } = useNotifications();
+  const { unreadCount: messageUnreadCount } = useMessages();
 
   const handleLogout = async () => {
     try {
@@ -72,10 +78,20 @@ export default function Navbar() {
     onClick={() =>
       setShowNotifications((current) => !current)
     }
-    aria-label="Notifications"
+    aria-label={`Notifications${
+      unreadCount > 0
+        ? `, ${unreadCount} unread`
+        : ""
+    }`}
     aria-expanded={showNotifications}
   >
     <Bell size={20} />
+
+    {unreadCount > 0 && (
+      <span className="navbar__notification-badge">
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </span>
+    )}
   </button>
 
   {showNotifications && (
@@ -85,13 +101,26 @@ export default function Navbar() {
   )}
 </div>
 
-  <button
-    className="navbar__icon-button"
-    type="button"
-    aria-label="Messages"
-  >
-    <Mail size={20} />
-  </button>
+ <button
+  type="button"
+  className="navbar__icon-button"
+  onClick={() => navigate("/messages")}
+  aria-label={`Messages${
+    unreadCount > 0
+      ? `, ${unreadCount} unread`
+      : ""
+  }`}
+>
+  <Mail size={20} />
+
+  {unreadCount > 0 && (
+    <span className="navbar__message-badge">
+      {unreadCount > 99
+        ? "99+"
+        : unreadCount}
+    </span>
+  )}
+</button>
 
  <button
             className="navbar__avatar"

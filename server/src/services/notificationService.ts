@@ -15,18 +15,25 @@ export async function createNotification({
   message,
   postId,
 }: CreateNotificationParams) {
-  // Don't notify users about their own actions.
+  // Don't notify users about their own actions
   if (recipientId === actorId) {
     return null;
   }
 
-  return prisma.notification.create({
-    data: {
-      type,
-      recipientId,
-      actorId,
-      message,
-      postId,
-    },
-  });
+  try {
+    const notification = await prisma.notification.create({
+      data: {
+        type,
+        recipientId,
+        actorId,
+        message,
+        postId: postId || null,
+      },
+    });
+
+    return notification;
+  } catch (error) {
+    console.error("Failed to create notification:", error);
+    return null;
+  }
 }

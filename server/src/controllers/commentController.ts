@@ -1,12 +1,10 @@
 import { Response } from "express";
+
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 import { createNotification } from "../services/notificationService";
 
-export async function createComment(
-  req: AuthRequest,
-  res: Response,
-) {
+export async function createComment(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -15,10 +13,10 @@ export async function createComment(
       });
     }
 
-    const { postId } = req.params;
     const { content } = req.body;
+    const { postId } = req.params;
 
-    if (!postId) {
+    if (typeof postId !== "string" || !postId.trim()) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
@@ -49,9 +47,7 @@ export async function createComment(
     }
 
     const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
+      where: { id: postId },
     });
 
     if (!post) {
@@ -78,20 +74,26 @@ export async function createComment(
         },
       },
     });
-await createNotification({
-  type: "COMMENT",
-  recipientId: post.authorId,
-  actorId: req.userId,
-  message: "commented on your post",
-  postId,
-});
+
+    // Don't notify the user when they comment on their own post
+    if (post.authorId !== req.userId) {
+      createNotification({
+        type: "COMMENT",
+        recipientId: post.authorId,
+        actorId: req.userId,
+        message: "commented on your post",
+        postId,
+      }).catch((err) => {
+        console.error("Failed to create comment notification:", err);
+      });
+    }
+
     return res.status(201).json({
       success: true,
       comment,
     });
   } catch (error) {
     console.error("Create comment error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to create comment",
@@ -99,10 +101,7 @@ await createNotification({
   }
 }
 
-export async function getComments(
-  req: AuthRequest,
-  res: Response,
-) {
+export async function getComments(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -113,7 +112,7 @@ export async function getComments(
 
     const { postId } = req.params;
 
-    if (!postId) {
+    if (typeof postId !== "string" || !postId.trim()) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
@@ -121,9 +120,7 @@ export async function getComments(
     }
 
     const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
+      where: { id: postId },
     });
 
     if (!post) {
@@ -134,9 +131,7 @@ export async function getComments(
     }
 
     const comments = await prisma.comment.findMany({
-      where: {
-        postId,
-      },
+      where: { postId },
       orderBy: {
         createdAt: "asc",
       },
@@ -158,7 +153,6 @@ export async function getComments(
     });
   } catch (error) {
     console.error("Get comments error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve comments",
@@ -166,10 +160,7 @@ export async function getComments(
   }
 }
 
-export async function deleteComment(
-  req: AuthRequest,
-  res: Response,
-) {
+export async function deleteComment(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -178,19 +169,24 @@ export async function deleteComment(
       });
     }
 
+    const { postId } = req.params;
+
+    if (typeof postId !== "string" || !postId.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Post ID is required",
+      });
+    }
     const { id } = req.params;
 
-    if (!id) {
+    if (typeof id !== "string" || !id.trim()) {
       return res.status(400).json({
         success: false,
         message: "Comment ID is required",
       });
     }
-
     const comment = await prisma.comment.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!comment) {
@@ -208,9 +204,7 @@ export async function deleteComment(
     }
 
     await prisma.comment.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     return res.status(200).json({
@@ -219,7 +213,6 @@ export async function deleteComment(
     });
   } catch (error) {
     console.error("Delete comment error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to delete comment",

@@ -3,11 +3,18 @@ import { useNavigate } from "react-router-dom";
 import FollowButton from "../FollowButton/FollowButton";
 
 import type { UserSearchResult } from "../../../services/api/userApi";
+import MessageButton from "../../messages/MessageButton/MessageButton";
 
 import "./UserResult.css";
 
 interface UserResultProps {
   user: UserSearchResult;
+}
+export interface UserResult {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar?: string | null;
 }
 
 export default function UserResult({
@@ -49,6 +56,8 @@ export default function UserResult({
       </button>
 
       <FollowButton userId={user.id} />
+
+  <MessageButton userId={user.id} />
     </article>
   );
 }

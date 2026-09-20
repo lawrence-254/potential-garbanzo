@@ -16,17 +16,27 @@ model User {
   bio         String   @default("")
   avatar      String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  followers   Follow[] @relation("followers")
-  following   Follow[] @relation("following")
-  posts       Post[]
-  likes       Like[]
-  comments    Comment[]
+  // Follow relations
+  followers Follow[] @relation("Followers")
+  following Follow[] @relation("Following")
 
-  notificationsReceived Notification[] @relation("notificationRecipient")
-  notificationsCreated  Notification[] @relation("notificationActor")
+  posts    Post[]
+  likes    Like[]
+  comments Comment[]
+
+  // Messaging
+  sentMessages     Message[] @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageReceiver")
+
+  conversationsAsUserOne Conversation[] @relation("ConversationUserOne")
+  conversationsAsUserTwo Conversation[] @relation("ConversationUserTwo")
+
+  // Notifications
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsCreated  Notification[] @relation("NotificationActor")
 }
 
 model Follow {
@@ -35,19 +45,8 @@ model Follow {
   followingId String
   createdAt   DateTime @default(now())
 
-  follower    User @relation(
-    "following",
-    fields: [followerId],
-    references: [id],
-    onDelete: Cascade
-  )
-
-  following   User @relation(
-    "followers",
-    fields: [followingId],
-    references: [id],
-    onDelete: Cascade
-  )
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@unique([followerId, followingId])
   @@index([followerId])
@@ -61,12 +60,11 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  likes     Like[]
-  comments  Comment[]
-
+  likes         Like[]
+  comments      Comment[]
   notifications Notification[]
 
   @@index([authorId])
@@ -79,8 +77,8 @@ model Like {
   postId    String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
   @@index([userId])
@@ -93,11 +91,11 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authorId  String
-  postId    String
+  authorId String
+  postId   String
 
-  author    User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([authorId])
   @@index([postId])
@@ -115,11 +113,51 @@ model Notification {
   actorId     String
   postId      String?
 
-  recipient User  @relation("notificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor     User  @relation("notificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User  @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   post      Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([recipientId])
   @@index([recipientId, read])
   @@index([createdAt])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userOneId String
+  userTwoId String
+
+  userOne User @relation("ConversationUserOne", fields: [userOneId], references: [id], onDelete: Cascade)
+  userTwo User @relation("ConversationUserTwo", fields: [userTwoId], references: [id], onDelete: Cascade)
+
+  messages Message[]
+
+  // Important: Always store the smaller ID as userOneId in your application code
+  @@unique([userOneId, userTwoId])
+  @@index([userOneId])
+  @@index([userTwoId])
+  @@index([updatedAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  conversationId String
+  senderId       String
+  receiverId     String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver     User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([conversationId, createdAt])
 }

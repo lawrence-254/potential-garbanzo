@@ -1,12 +1,11 @@
 import { Response } from "express";
-
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 
-export async function createPost(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// POST /api/posts
+//
+export async function createPost(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -43,10 +42,7 @@ export async function createPost(
     const post = await prisma.post.create({
       data: {
         content: normalizedContent,
-        image:
-          typeof image === "string" && image.trim()
-            ? image.trim()
-            : null,
+        image: typeof image === "string" && image.trim() ? image.trim() : null,
         authorId: req.userId,
       },
       include: {
@@ -64,11 +60,15 @@ export async function createPost(
     return res.status(201).json({
       success: true,
       message: "Post created successfully",
-      post,
+      post: {
+        ...post,
+        likeCount: 0,
+        commentCount: 0,
+        likedByCurrentUser: false,
+      },
     });
   } catch (error) {
     console.error("Create post error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to create post",
@@ -76,10 +76,10 @@ export async function createPost(
   }
 }
 
-export async function getPosts(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// GET /api/posts  (Home feed - own posts + following)
+//
+export async function getPosts(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -91,9 +91,7 @@ export async function getPosts(
     const posts = await prisma.post.findMany({
       where: {
         OR: [
-          {
-            authorId: req.userId,
-          },
+          { authorId: req.userId },
           {
             author: {
               followers: {
@@ -105,11 +103,10 @@ export async function getPosts(
           },
         ],
       },
-
       orderBy: {
         createdAt: "desc",
       },
-
+      take: 50, // Limit results
       include: {
         author: {
           select: {
@@ -119,14 +116,12 @@ export async function getPosts(
             avatar: true,
           },
         },
-
         _count: {
           select: {
             likes: true,
             comments: true,
           },
         },
-
         likes: {
           where: {
             userId: req.userId,
@@ -146,7 +141,6 @@ export async function getPosts(
       updatedAt: post.updatedAt,
       authorId: post.authorId,
       author: post.author,
-
       likeCount: post._count.likes,
       commentCount: post._count.comments,
       likedByCurrentUser: post.likes.length > 0,
@@ -157,8 +151,7 @@ export async function getPosts(
       posts: formattedPosts,
     });
   } catch (error) {
-    console.error("Get personalized posts error:", error);
-
+    console.error("Get posts error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve posts",
@@ -166,10 +159,10 @@ export async function getPosts(
   }
 }
 
-export async function deletePost(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// DELETE /api/posts/:id
+//
+export async function deletePost(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -180,7 +173,7 @@ export async function deletePost(
 
     const { id } = req.params;
 
-    if (!id) {
+    if (typeof id !== "string" || !id.trim()) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
@@ -188,9 +181,7 @@ export async function deletePost(
     }
 
     const post = await prisma.post.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!post) {
@@ -200,8 +191,7 @@ export async function deletePost(
       });
     }
 
-    // Important security check:
-    // users can only delete their own posts.
+    // Users can only delete their own posts
     if (post.authorId !== req.userId) {
       return res.status(403).json({
         success: false,
@@ -210,9 +200,7 @@ export async function deletePost(
     }
 
     await prisma.post.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     return res.status(200).json({
@@ -221,7 +209,6 @@ export async function deletePost(
     });
   } catch (error) {
     console.error("Delete post error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to delete post",

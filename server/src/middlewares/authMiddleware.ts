@@ -2,11 +2,11 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 export interface AuthRequest extends Request {
-  userId?: number; // SQLite id is a number
+  userId?: string; // Prisma uses String (cuid)
 }
 
 interface JwtPayload {
-  userId: number;
+  userId: string;
 }
 
 export function requireAuth(

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import FollowButton from "../../components/users/FollowButton/FollowButton";
 import PostCard from "../../components/post/PostCard/PostCard";
+import MessageButton from "../../components/messages/MessageButton/MessageButton";
 
 import {
   getUserProfile,
@@ -135,6 +136,7 @@ export default function PublicProfile() {
         : current,
     )
   }/>
+  <MessageButton userId={profile.id} />
       </section>
 
       <section className="public-profile__posts">

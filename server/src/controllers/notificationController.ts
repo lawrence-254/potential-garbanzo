@@ -1,11 +1,11 @@
 import { Response } from "express";
 import prisma from "../config/prisma";
-import { AuthRequest } from "../middlewares/authMiddleware";
+import type { AuthRequest } from "../middlewares/authMiddleware";
 
-export async function getNotifications(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// GET /api/notifications
+//
+export async function getNotifications(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -18,13 +18,10 @@ export async function getNotifications(
       where: {
         recipientId: req.userId,
       },
-
       orderBy: {
         createdAt: "desc",
       },
-
       take: 50,
-
       include: {
         actor: {
           select: {
@@ -34,7 +31,6 @@ export async function getNotifications(
             avatar: true,
           },
         },
-
         post: {
           select: {
             id: true,
@@ -50,7 +46,6 @@ export async function getNotifications(
     });
   } catch (error) {
     console.error("Get notifications error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve notifications",
@@ -58,10 +53,10 @@ export async function getNotifications(
   }
 }
 
-export async function markNotificationAsRead(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// PATCH /api/notifications/:id/read
+//
+export async function markNotificationAsRead(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -72,12 +67,23 @@ export async function markNotificationAsRead(
 
     const { id } = req.params;
 
-    const notification =
-      await prisma.notification.findUnique({
-        where: {
-          id,
-        },
+    if (typeof id !== "string" || !id.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Notification ID is required",
       });
+    }
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Notification ID is required",
+      });
+    }
+
+    const notification = await prisma.notification.findUnique({
+      where: { id },
+    });
 
     if (!notification) {
       return res.status(404).json({
@@ -93,27 +99,17 @@ export async function markNotificationAsRead(
       });
     }
 
-    const updatedNotification =
-      await prisma.notification.update({
-        where: {
-          id,
-        },
-
-        data: {
-          read: true,
-        },
-      });
+    const updatedNotification = await prisma.notification.update({
+      where: { id },
+      data: { read: true },
+    });
 
     return res.status(200).json({
       success: true,
       notification: updatedNotification,
     });
   } catch (error) {
-    console.error(
-      "Mark notification as read error:",
-      error,
-    );
-
+    console.error("Mark notification as read error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update notification",
@@ -121,10 +117,10 @@ export async function markNotificationAsRead(
   }
 }
 
-export async function markAllNotificationsAsRead(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// PATCH /api/notifications/read-all
+//
+export async function markAllNotificationsAsRead(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -138,7 +134,6 @@ export async function markAllNotificationsAsRead(
         recipientId: req.userId,
         read: false,
       },
-
       data: {
         read: true,
       },
@@ -149,11 +144,7 @@ export async function markAllNotificationsAsRead(
       message: "All notifications marked as read",
     });
   } catch (error) {
-    console.error(
-      "Mark all notifications as read error:",
-      error,
-    );
-
+    console.error("Mark all notifications as read error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update notifications",

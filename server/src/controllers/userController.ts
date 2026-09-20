@@ -1,169 +1,152 @@
-// import { Response } from "express";
-// import { AuthRequest } from "../middlewares/authMiddleware";
-// import { findUserById } from "../models/User";
-// import  {db}  "../config/database"
-
-// export async function getMyProfile(req: AuthRequest, res: Response) {
-//   try {
-//     if (!req.userId) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Authentication required",
-//       });
-//     }
-
-//     const user = findUserById(req.userId);
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     // Get followers & following counts
-//     const followersCount = (
-//       db
-//         .prepare(`SELECT COUNT(*) as count FROM follows WHERE following_id = ?`)
-//         .get(user.id) as { count: number }
-//     ).count;
-
-//     const followingCount = (
-//       db
-//         .prepare(`SELECT COUNT(*) as count FROM follows WHERE follower_id = ?`)
-//         .get(user.id) as { count: number }
-//     ).count;
-
-//     return res.json({
-//       success: true,
-//       user: {
-//         id: user.id,
-//         username: user.username,
-//         email: user.email,
-//         displayName: user.displayName,
-//         bio: user.bio,
-//         avatar: user.avatar,
-//         followersCount,
-//         followingCount,
-//         createdAt: user.createdAt,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Get profile error:", error);
-
-//     return res.status(500).json({
-//       success: false,
-//       message: "Unable to retrieve profile",
-//     });
-//   }
-// }
-
-
-// export async function updateMyProfile(req: AuthRequest, res: Response) {
-//   try {
-//     if (!req.userId) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Authentication required",
-//       });
-//     }
-
-//     const { displayName, bio } = req.body;
-
-//     // Validation
-//     if (!displayName || !displayName.trim()) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Display name is required",
-//       });
-//     }
-
-//     if (displayName.trim().length > 50) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Display name cannot exceed 50 characters",
-//       });
-//     }
-
-//     if (bio && bio.length > 160) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Bio cannot exceed 160 characters",
-//       });
-//     }
-
-//     // Update user
-//     const result = db
-//       .prepare(
-//         `UPDATE users 
-//          SET displayName = ?, bio = ?
-//          WHERE id = ?`
-//       )
-//       .run(displayName.trim(), bio?.trim() || "", req.userId);
-
-//     if (result.changes === 0) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     // Fetch updated user
-//     const user = findUserById(req.userId);
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     // Get counts
-//     const followersCount = (
-//       db
-//         .prepare(`SELECT COUNT(*) as count FROM follows WHERE following_id = ?`)
-//         .get(user.id) as { count: number }
-//     ).count;
-
-//     const followingCount = (
-//       db
-//         .prepare(`SELECT COUNT(*) as count FROM follows WHERE follower_id = ?`)
-//         .get(user.id) as { count: number }
-//     ).count;
-
-//     return res.json({
-//       success: true,
-//       message: "Profile updated successfully",
-//       user: {
-//         id: user.id,
-//         username: user.username,
-//         email: user.email,
-//         displayName: user.displayName,
-//         bio: user.bio,
-//         avatar: user.avatar,
-//         followersCount,
-//         followingCount,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Update profile error:", error);
-
-//     return res.status(500).json({
-//       success: false,
-//       message: "Unable to update profile",
-//     });
-//   }
-// }
-
 import { Response } from "express";
-
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 
-export async function getUserProfile(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// GET /api/users/me
+//
+export async function getMyProfile(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        displayName: true,
+        bio: true,
+        avatar: true,
+        createdAt: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        bio: user.bio,
+        avatar: user.avatar,
+        followersCount: user._count.followers,
+        followingCount: user._count.following,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Get profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve profile",
+    });
+  }
+}
+
+//
+// PATCH /api/users/me
+//
+export async function updateMyProfile(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const { displayName, bio } = req.body;
+
+    if (!displayName || typeof displayName !== "string" || !displayName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Display name is required",
+      });
+    }
+
+    if (displayName.trim().length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "Display name cannot exceed 50 characters",
+      });
+    }
+
+    if (bio !== undefined && typeof bio === "string" && bio.length > 160) {
+      return res.status(400).json({
+        success: false,
+        message: "Bio cannot exceed 160 characters",
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        displayName: displayName.trim(),
+        bio: typeof bio === "string" ? bio.trim() : "",
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        displayName: true,
+        bio: true,
+        avatar: true,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+          },
+        },
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        displayName: updatedUser.displayName,
+        bio: updatedUser.bio,
+        avatar: updatedUser.avatar,
+        followersCount: updatedUser._count.followers,
+        followingCount: updatedUser._count.following,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update profile",
+    });
+  }
+}
+
+//
+// GET /api/users/:username
+//
+export async function getUserProfile(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -174,7 +157,8 @@ export async function getUserProfile(
 
     const { username } = req.params;
 
-    if (!username) {
+    // Fix: narrow string | string[] → string
+    if (typeof username !== "string" || !username.trim()) {
       return res.status(400).json({
         success: false,
         message: "Username is required",
@@ -183,7 +167,7 @@ export async function getUserProfile(
 
     const profile = await prisma.user.findUnique({
       where: {
-        username,
+        username: username.trim().toLowerCase(), // matches how you store usernames
       },
       select: {
         id: true,
@@ -192,14 +176,12 @@ export async function getUserProfile(
         bio: true,
         avatar: true,
         createdAt: true,
-
         _count: {
           select: {
             followers: true,
             following: true,
           },
         },
-
         followers: {
           where: {
             followerId: req.userId,
@@ -208,7 +190,6 @@ export async function getUserProfile(
             id: true,
           },
         },
-
         posts: {
           orderBy: {
             createdAt: "desc",
@@ -222,14 +203,12 @@ export async function getUserProfile(
                 avatar: true,
               },
             },
-
             _count: {
               select: {
                 likes: true,
                 comments: true,
               },
             },
-
             likes: {
               where: {
                 userId: req.userId,
@@ -280,7 +259,6 @@ export async function getUserProfile(
     });
   } catch (error) {
     console.error("Get user profile error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve user profile",
@@ -288,10 +266,10 @@ export async function getUserProfile(
   }
 }
 
-export async function searchUsers(
-  req: AuthRequest,
-  res: Response,
-) {
+//
+// GET /api/users/search?q=...
+//
+export async function searchUsers(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -300,10 +278,7 @@ export async function searchUsers(
       });
     }
 
-    const query =
-      typeof req.query.q === "string"
-        ? req.query.q.trim()
-        : "";
+    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
     if (!query) {
       return res.status(200).json({
@@ -324,12 +299,13 @@ export async function searchUsers(
         OR: [
           {
             username: {
-              contains: query,
+              contains: query.toLowerCase(),
             },
           },
           {
             displayName: {
               contains: query,
+              // If you use PostgreSQL you can add: mode: "insensitive"
             },
           },
         ],
@@ -340,14 +316,12 @@ export async function searchUsers(
         displayName: true,
         bio: true,
         avatar: true,
-
         _count: {
           select: {
             followers: true,
             following: true,
           },
         },
-
         followers: {
           where: {
             followerId: req.userId,
@@ -380,7 +354,6 @@ export async function searchUsers(
     });
   } catch (error) {
     console.error("Search users error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to search users",

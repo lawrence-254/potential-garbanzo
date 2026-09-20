@@ -79,17 +79,17 @@ export default function Navbar() {
       setShowNotifications((current) => !current)
     }
     aria-label={`Notifications${
-      unreadCount > 0
-        ? `, ${unreadCount} unread`
+      notificationUnreadCount > 0
+        ? `, ${notificationUnreadCount} unread`
         : ""
     }`}
     aria-expanded={showNotifications}
   >
     <Bell size={20} />
 
-    {unreadCount > 0 && (
+    {notificationUnreadCount> 0 && (
       <span className="navbar__notification-badge">
-        {unreadCount > 99 ? "99+" : unreadCount}
+        {notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}
       </span>
     )}
   </button>
@@ -106,18 +106,18 @@ export default function Navbar() {
   className="navbar__icon-button"
   onClick={() => navigate("/messages")}
   aria-label={`Messages${
-    unreadCount > 0
-      ? `, ${unreadCount} unread`
+    messageUnreadCount > 0
+      ? `, ${messageUnreadCount} unread`
       : ""
   }`}
 >
   <Mail size={20} />
 
-  {unreadCount > 0 && (
+  {messageUnreadCount > 0 && (
     <span className="navbar__message-badge">
-      {unreadCount > 99
+      {messageUnreadCount > 99
         ? "99+"
-        : unreadCount}
+        : messageUnreadCount}
     </span>
   )}
 </button>

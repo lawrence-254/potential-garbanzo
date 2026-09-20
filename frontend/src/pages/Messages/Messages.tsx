@@ -25,6 +25,7 @@ export default function Messages() {
   loading,
   refreshMessages,
   markConversationAsReadLocally,
+  error,
 } = useMessages();;
 
 

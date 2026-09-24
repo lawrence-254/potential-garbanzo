@@ -160,7 +160,10 @@ export async function getComments(req: AuthRequest, res: Response) {
   }
 }
 
-export async function deleteComment(req: AuthRequest, res: Response) {
+export async function deleteComment(
+  req: AuthRequest,
+  res: Response
+) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -169,14 +172,6 @@ export async function deleteComment(req: AuthRequest, res: Response) {
       });
     }
 
-    const { postId } = req.params;
-
-    if (typeof postId !== "string" || !postId.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Post ID is required",
-      });
-    }
     const { id } = req.params;
 
     if (typeof id !== "string" || !id.trim()) {
@@ -185,6 +180,7 @@ export async function deleteComment(req: AuthRequest, res: Response) {
         message: "Comment ID is required",
       });
     }
+
     const comment = await prisma.comment.findUnique({
       where: { id },
     });
@@ -213,6 +209,7 @@ export async function deleteComment(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Delete comment error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to delete comment",

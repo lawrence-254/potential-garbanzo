@@ -203,6 +203,7 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
                 avatar: true,
               },
             },
+            images: true,
             _count: {
               select: {
                 likes: true,
@@ -232,7 +233,7 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
     const posts = profile.posts.map((post) => ({
       id: post.id,
       content: post.content,
-      image: post.image,
+      images: post.images,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       authorId: post.authorId,

@@ -14,6 +14,7 @@ import Register from "./pages/Register/Register";
 import Login from "./pages/Login/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute/ProtectedRoute";
 import PublicProfile from "./pages/PublicProfile/PublicProfile";
+import PostDetails from "./pages/PostDetails/PostDetails";
 
 
 function App() {
@@ -22,21 +23,21 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route element={<PublicRoute />}>
+
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
         </Route>
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/post/:postId" element={<PostDetails />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/profile" element={<Profile />} />
-            <Route
-  path="/profile/:username"
-  element={<PublicProfile />}
-/>
+            <Route path="/profile/:username" element={<PublicProfile />} />
           </Route>
         </Route>
       </Routes>

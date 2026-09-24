@@ -38,7 +38,15 @@ model User {
   notificationsReceived Notification[] @relation("NotificationRecipient")
   notificationsCreated  Notification[] @relation("NotificationActor")
 }
+model PostImage {
+  id        String   @id @default(cuid())
+  url       String
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
+  @@index([postId])
+}
 model Follow {
   id          String   @id @default(cuid())
   followerId  String
@@ -54,15 +62,20 @@ model Follow {
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  content   String
-  image     String?
+  id           String   @id @default(cuid())
+  title        String
+  content      String
+  thumbnail    String?
+  code         String?
+  codeLanguage String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  images        PostImage[]
   likes         Like[]
   comments      Comment[]
   notifications Notification[]

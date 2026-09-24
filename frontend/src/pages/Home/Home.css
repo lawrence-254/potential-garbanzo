@@ -77,3 +77,37 @@
   color: var(--color-text-muted);
   font-size: 14px;
 }
+
+.home__create-post {
+  width: 100%;
+  min-height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin-bottom: 20px;
+
+  border: 0;
+  border-radius: var(--radius-lg);
+
+  background: var(--color-primary);
+  color: #ffffff;
+
+  font: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow: var(--shadow-sm);
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.home__create-post:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}

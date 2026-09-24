@@ -7,23 +7,17 @@ interface LikeResponse {
 }
 
 export async function likePost(
-  postId: string,
+  postId: string
 ): Promise<LikeResponse> {
-  return apiRequest<LikeResponse>(
-    `/likes/${postId}`,
-    {
-      method: "POST",
-    },
-  );
+  return apiRequest<LikeResponse>(`/likes/${postId}`, {
+    method: "POST",
+  });
 }
 
 export async function unlikePost(
-  postId: string,
+  postId: string
 ): Promise<LikeResponse> {
-  return apiRequest<LikeResponse>(
-    `/likes/${postId}`,
-    {
-      method: "DELETE",
-    },
-  );
+  return apiRequest<LikeResponse>(`/likes/${postId}`, {
+    method: "DELETE",
+  });
 }

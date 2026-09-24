@@ -50,7 +50,11 @@ export async function search(req: AuthRequest, res: Response) {
         select: {
           id: true,
           content: true,
-          image: true,
+          images: {
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
           createdAt: true,
           author: {
             select: {
@@ -208,7 +212,11 @@ export async function getExplorePosts(req: AuthRequest, res: Response) {
       select: {
         id: true,
         content: true,
-        image: true,
+        images: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
         createdAt: true,
         author: {
           select: {
@@ -236,7 +244,7 @@ export async function getExplorePosts(req: AuthRequest, res: Response) {
     const formattedPosts = posts.map((post) => ({
       id: post.id,
       content: post.content,
-      image: post.image,
+      images: post.images,
       createdAt: post.createdAt,
       author: post.author,
       likeCount: post._count.likes,

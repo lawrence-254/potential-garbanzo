@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 
-import CreatePost from "../../components/post/CreatePost/CreatePost";
+import PostModal from "../../components/post/PostModal/PostModal";
 import PostCard from "../../components/post/PostCard/PostCard";
 
-import {
-  getPosts,
-  type Post,
-} from "../../services/api/postApi";
+import { getPosts, type Post } from "../../services/api/postApi";
 
 import "./Home.css";
 
@@ -14,13 +12,14 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [postModalOpen, setPostModalOpen] = useState(false);
 
   const loadPosts = async () => {
     try {
+      setLoading(true);
       setError("");
 
       const data = await getPosts();
-
       setPosts(data);
     } catch (error) {
       setError(
@@ -32,13 +31,18 @@ export default function Home() {
       setLoading(false);
     }
   };
-const handlePostDeleted = (postId: string) => {
-  setPosts((currentPosts) =>
-    currentPosts.filter(
-      (post) => post.id !== postId,
-    ),
-  );
-};
+
+  const handlePostDeleted = (postId: string) => {
+    setPosts((currentPosts) =>
+      currentPosts.filter((post) => post.id !== postId),
+    );
+  };
+
+  const handlePostCreated = () => {
+    setPostModalOpen(false);
+    loadPosts();
+  };
+
   useEffect(() => {
     loadPosts();
   }, []);
@@ -48,20 +52,25 @@ const handlePostDeleted = (postId: string) => {
       <div className="home__header">
         <div>
           <h1>Home</h1>
-          <p>What's happening on Royal?</p>
+          <p>What's up</p>
         </div>
       </div>
 
-      <CreatePost onPostCreated={loadPosts} />
-      
+      <button
+        type="button"
+        className="home__create-post"
+        onClick={() => setPostModalOpen(true)}
+      >
+        <Plus size={20} />
+        Create a post
+      </button>
 
       <section className="home__feed">
         <div className="home__feed-header">
-    <h2>Your Feed</h2>
-    <p>
-      Posts from you and people you follow.
-    </p>
-  </div>
+          <h2>Your Feed</h2>
+          <p>Posts from you and people you follow.</p>
+        </div>
+
         {loading && (
           <div className="home__status">
             Loading posts...
@@ -73,27 +82,19 @@ const handlePostDeleted = (postId: string) => {
             {error}
           </div>
         )}
-{posts.length === 0 && !loading && !error && (
-  <div className="home__empty">
-    <h2>Your feed is empty</h2>
 
-    <p>
-      Create your first post or follow people to
-      see their posts here.
-    </p>
-  </div>
-)}
         {!loading && !error && posts.length === 0 && (
           <div className="home__empty">
-            <h2>No posts yet</h2>
+            <h2>Your feed is empty</h2>
             <p>
-              Be the first person to share
-              something on Royal.
+              Create your first post or follow people to
+              see their posts here.
             </p>
           </div>
         )}
 
         {!loading &&
+          !error &&
           posts.map((post) => (
             <PostCard
               key={post.id}
@@ -102,6 +103,12 @@ const handlePostDeleted = (postId: string) => {
             />
           ))}
       </section>
+
+      <PostModal
+        isOpen={postModalOpen}
+        onClose={() => setPostModalOpen(false)}
+        onPostCreated={handlePostCreated}
+      />
     </div>
   );
 }

@@ -1,233 +1,157 @@
-import {
-  Heart,
-  MessageCircle,
-  MoreHorizontal,
-  Share2,
-  Trash2,
-} from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Heart, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../context/authContext/authContext";
-import {deletePost, type Post } from "../../../services/api/postApi";
 import {
   likePost,
   unlikePost,
 } from "../../../services/api/likeApi";
-import CommentSection from "../../comments/CommentSection/CommentSection";
+import type { Post } from "../../../types/post";
+import { getImageUrl } from "../../../utils/imageUrl";
 
 import "./PostCard.css";
 
 interface PostCardProps {
   post: Post;
-  onPostDeleted: (postId: string)=>void;
 }
 
-export default function PostCard({
-  post,
-  onPostDeleted,
-}: PostCardProps) {
-  const { user } = useAuth();
+function PostCard({ post }: PostCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const [showMenu, setShowMenu] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [liked, setLiked] = useState(
-  post.likedByCurrentUser,
-);
+  // Safe defaults – never access .length / .some on undefined
+  const likes = post.likes ?? [];
+  const comments = post.comments ?? [];
 
-const [likeCount, setLikeCount] = useState(
-  post.likeCount,
-);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(likes.length);
+  const [liking, setLiking] = useState(false);
 
-const [likeLoading, setLikeLoading] =
-  useState(false);
-const [showComments, setShowComments] = useState(false);
-const [commentCount, setCommentCount] = useState(
-  post.commentCount,
-);
+  const excerpt =
+    (post.content ?? "").length > 160
+      ? `${(post.content ?? "").slice(0, 160)}...`
+      : post.content ?? "";
 
-  const isOwner = user?.id === post.authorId;
-  const formattedDate = new Date(
-    post.createdAt,
-  ).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  useEffect(() => {
+    const currentLikes = post.likes ?? [];
 
-  const avatarLetter =
-    post.author.displayName
-      ?.charAt(0)
-      .toUpperCase() || "U";
-
-      const handleDelete = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this post?",
+    setLiked(
+      currentLikes.some((like) => like.userId === user?.id)
     );
+    setLikeCount(currentLikes.length);
+  }, [post, user]);
 
-    if (!confirmed) {
-      return;
-    }
+  const handleOpenPost = () => {
+    navigate(`/post/${post.id}`);
+  };
+
+  const handleLike = async (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation();
+
+    if (liking) return;
 
     try {
-      setDeleting(true);
+      setLiking(true);
 
-      await deletePost(post.id);
+      const response = liked
+        ? await unlikePost(post.id)
+        : await likePost(post.id);
 
-      onPostDeleted(post.id);
+      setLiked(response.liked);
+      setLikeCount(response.likeCount);
     } catch (error) {
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to delete post.",
-      );
+      console.error("Failed to update like:", error);
     } finally {
-      setDeleting(false);
-      setShowMenu(false);
+      setLiking(false);
     }
   };
 
-  const handleLike = async () => {
-  if (likeLoading) {
-    return;
-  }
-
-  try {
-    setLikeLoading(true);
-
-    if (liked) {
-      const response = await unlikePost(post.id);
-
-      setLiked(response.liked);
-      setLikeCount(response.likeCount);
-    } else {
-      const response = await likePost(post.id);
-
-      setLiked(response.liked);
-      setLikeCount(response.likeCount);
-    }
-  } catch (error) {
-    console.error("Like action failed:", error);
-  } finally {
-    setLikeLoading(false);
-  }
-};
+  const handleComments = (
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation();
+    navigate(`/post/${post.id}`);
+  };
 
   return (
-    <article className="post-card">
-      <div className="post-card__header">
-        <button
-        type="button"
-         className="post-card__author"
-          onClick={() =>
-    navigate(
-      `/profile/${post.author.username}`,
-    )
-  }
-         >
-          <div className="post-card__avatar">
-            {post.author.avatar ? (
-              <img
-                src={post.author.avatar}
-                alt={post.author.displayName}
-              />
-            ) : (
-              avatarLetter
-            )}
+    <article
+      className="post-card"
+      onClick={handleOpenPost}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleOpenPost();
+        }
+      }}
+    >
+      <header className="post-card__author">
+        <div className="post-card__avatar">
+          {post.author?.name?.charAt(0).toUpperCase() ?? "?"}
+        </div>
+
+        <div className="post-card__author-info">
+          <strong>{post.author?.name ?? "Unknown"}</strong>
+          <span>@{post.author?.username ?? "unknown"}</span>
+        </div>
+      </header>
+
+      <div className="post-card__body">
+        <h2 className="post-card__title">{post.title}</h2>
+
+        {post.thumbnail && (
+          <div className="post-card__thumbnail">
+            <img
+              src={getImageUrl(post.thumbnail)}
+              alt={post.title}
+              loading="lazy"
+            />
           </div>
+        )}
 
-          <div className="post-card__author-info">
-            <strong>
-              {post.author.displayName}
-            </strong>
+        <p className="post-card__excerpt">{excerpt}</p>
 
-            <span>
-              @{post.author.username} · {formattedDate}
-            </span>
-          </div>
-        </button>
-{isOwner && (
-          <div className="post-card__menu">
-            <button
-              className="post-card__more"
-              type="button"
-              aria-label="Post options"
-              onClick={() =>
-                setShowMenu((current) => !current)
-              }
-            >
-              <MoreHorizontal size={20} />
-            </button>
-
-            {showMenu && (
-              <div className="post-card__dropdown">
-                <button
-                  type="button"
-                  className="post-card__delete"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
-                  <Trash2 size={16} />
-                  {deleting
-                    ? "Deleting..."
-                    : "Delete post"}
-                </button>
-              </div>
-            )}
+        {post.code && (
+          <div className="post-card__code-indicator">
+            <span>{post.codeLanguage || "Code"}</span>
+            <span>Code included</span>
           </div>
         )}
       </div>
 
-      <div className="post-card__content">
-        <p>{post.content}</p>
-
-        {post.image && (
-          <img
-            className="post-card__image"
-            src={post.image}
-            alt="Post attachment"
-          />
-        )}
-      </div>
-
-      <div className="post-card__actions">
+      <footer className="post-card__footer">
         <button
-  type="button"
-  className={
-    liked
-      ? "post-card__action post-card__action--liked"
-      : "post-card__action"
-  }
-  onClick={handleLike}
-  disabled={likeLoading}
-  aria-label={
-    liked
-      ? "Unlike post"
-      : "Like post"
-  }
->
-  <Heart
-    size={19}
-    fill={liked ? "currentColor" : "none"}
-  />
-
-  <span>{likeCount}</span>
-</button>
-
-        <button type="button"
-        onClick={()=>setShowComments((current)=>!current)}
+          type="button"
+          className={`post-card__action ${
+            liked ? "post-card__action--liked" : ""
+          }`}
+          onClick={handleLike}
+          disabled={liking}
+          aria-label={liked ? "Unlike post" : "Like post"}
         >
-          <MessageCircle size={19} />
-          <span>{commentCount}</span>
+          <Heart
+            size={18}
+            fill={liked ? "currentColor" : "none"}
+          />
+          <span>{likeCount}</span>
         </button>
 
-        <button type="button">
-          <Share2 size={19} />
+        <button
+          type="button"
+          className="post-card__action"
+          onClick={handleComments}
+          aria-label="View comments"
+        >
+          <MessageCircle size={18} />
+          <span>{comments.length}</span>
         </button>
-
-      </div>
-      {showComments && (<CommentSection postId={post.id} onCommentCountChange={setCommentCount}/>)}
+      </footer>
     </article>
   );
 }
+
+export default PostCard;

@@ -4,28 +4,31 @@ import { Plus } from "lucide-react";
 import PostModal from "../../components/post/PostModal/PostModal";
 import PostCard from "../../components/post/PostCard/PostCard";
 
-import { getPosts, type Post } from "../../services/api/postApi";
+import { getPosts } from "../../services/api/postApi";
+import type { Post } from "../../types/post";
 
 import "./Home.css";
+
+type FeedType = "following" | "everyone";
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [postModalOpen, setPostModalOpen] = useState(false);
+  const [feedType, setFeedType] = useState<FeedType>("following");
 
-  const loadPosts = async () => {
+  const loadPosts = async (type: FeedType = feedType) => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await getPosts();
+      // Pass the selected feed type to the API
+      const data = await getPosts({ feed: type });
       setPosts(data);
     } catch (error) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load posts.",
+        error instanceof Error ? error.message : "Failed to load posts.",
       );
     } finally {
       setLoading(false);
@@ -43,9 +46,10 @@ export default function Home() {
     loadPosts();
   };
 
+  // Reload posts whenever the user switches tabs
   useEffect(() => {
-    loadPosts();
-  }, []);
+    loadPosts(feedType);
+  }, [feedType]);
 
   return (
     <div className="home">
@@ -66,29 +70,58 @@ export default function Home() {
       </button>
 
       <section className="home__feed">
+        {/* ===== Feed type selector ===== */}
+        <div className="home__feed-tabs">
+          <button
+            type="button"
+            className={`home__feed-tab ${
+              feedType === "following" ? "home__feed-tab--active" : ""
+            }`}
+            onClick={() => setFeedType("following")}
+          >
+            Following
+          </button>
+          <button
+            type="button"
+            className={`home__feed-tab ${
+              feedType === "everyone" ? "home__feed-tab--active" : ""
+            }`}
+            onClick={() => setFeedType("everyone")}
+          >
+            Everyone
+          </button>
+        </div>
+
         <div className="home__feed-header">
-          <h2>Your Feed</h2>
-          <p>Posts from you and people you follow.</p>
+          <h2>
+            {feedType === "following" ? "Your Feed" : "All Posts"}
+          </h2>
+          <p>
+            {feedType === "following"
+              ? "Posts from you and people you follow."
+              : "Posts from everyone on the platform."}
+          </p>
         </div>
 
         {loading && (
-          <div className="home__status">
-            Loading posts...
-          </div>
+          <div className="home__status">Loading posts...</div>
         )}
 
         {error && (
-          <div className="home__status home__status--error">
-            {error}
-          </div>
+          <div className="home__status home__status--error">{error}</div>
         )}
 
         {!loading && !error && posts.length === 0 && (
           <div className="home__empty">
-            <h2>Your feed is empty</h2>
+            <h2>
+              {feedType === "following"
+                ? "Your feed is empty"
+                : "No posts yet"}
+            </h2>
             <p>
-              Create your first post or follow people to
-              see their posts here.
+              {feedType === "following"
+                ? "Create your first post or follow people to see their posts here."
+                : "Be the first to create a post!"}
             </p>
           </div>
         )}

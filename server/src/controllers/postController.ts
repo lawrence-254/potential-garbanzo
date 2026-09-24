@@ -14,6 +14,125 @@ function getPostId(req: AuthRequest): string | null {
   return trimmedId || null;
 }
 
+// GET /api/posts
+// Supports: ?feed=following | ?feed=everyone
+//
+export async function getPosts(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Read the feed type from query params
+    const feedType = (req.query.feed as string)?.toLowerCase() || "following";
+
+    // Base include that both feeds share
+    const include = {
+      author: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatar: true,
+        },
+      },
+      images: {
+        orderBy: {
+          createdAt: "asc" as const,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+        },
+      },
+      likes: {
+        where: {
+          userId: req.userId,
+        },
+        select: {
+          id: true,
+        },
+      },
+    };
+
+    let posts;
+
+    if (feedType === "everyone") {
+      // ========== EVERYONE ==========
+      posts = await prisma.post.findMany({
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 50,
+        include,
+      });
+    } else {
+      // ========== FOLLOWING (default) ==========
+      // Own posts + posts from users that the current user follows
+      posts = await prisma.post.findMany({
+        where: {
+          OR: [
+            {
+              authorId: req.userId, // own posts
+            },
+            {
+              author: {
+                followers: {
+                  some: {
+                    followerId: req.userId,
+                  },
+                },
+              },
+            },
+          ],
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 50,
+        include,
+      });
+    }
+
+    const formattedPosts = posts.map((post) => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      thumbnail: post.thumbnail,
+      code: post.code,
+      codeLanguage: post.codeLanguage,
+      images: post.images,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      authorId: post.authorId,
+      author: post.author,
+      likeCount: post._count.likes,
+      commentCount: post._count.comments,
+      likedByCurrentUser: post.likes.length > 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      posts: formattedPosts,
+    });
+  } catch (error) {
+    console.error("Get posts error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve posts",
+    });
+  }
+}
+
 //
 // POST /api/posts
 //
@@ -311,115 +430,115 @@ export async function getPost(
 // GET /api/posts
 // Home feed - own posts + posts from followed users
 //
-export async function getPosts(
-  req: AuthRequest,
-  res: Response
-): Promise<Response> {
-  try {
-    if (!req.userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
-    }
+// export async function getPosts(
+//   req: AuthRequest,
+//   res: Response
+// ): Promise<Response> {
+//   try {
+//     if (!req.userId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Authentication required",
+//       });
+//     }
 
-    const posts = await prisma.post.findMany({
-      where: {
-        OR: [
-          {
-            authorId: req.userId,
-          },
+//     const posts = await prisma.post.findMany({
+//       where: {
+//         OR: [
+//           {
+//             authorId: req.userId,
+//           },
 
-          {
-            author: {
-              followers: {
-                some: {
-                  followerId: req.userId,
-                },
-              },
-            },
-          },
-        ],
-      },
+//           {
+//             author: {
+//               followers: {
+//                 some: {
+//                   followerId: req.userId,
+//                 },
+//               },
+//             },
+//           },
+//         ],
+//       },
 
-      orderBy: {
-        createdAt: "desc",
-      },
+//       orderBy: {
+//         createdAt: "desc",
+//       },
 
-      take: 50,
+//       take: 50,
 
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-          },
-        },
+//       include: {
+//         author: {
+//           select: {
+//             id: true,
+//             username: true,
+//             displayName: true,
+//             avatar: true,
+//           },
+//         },
 
-        images: {
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
+//         images: {
+//           orderBy: {
+//             createdAt: "asc",
+//           },
+//         },
 
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-          },
-        },
+//         _count: {
+//           select: {
+//             likes: true,
+//             comments: true,
+//           },
+//         },
 
-        likes: {
-          where: {
-            userId: req.userId,
-          },
+//         likes: {
+//           where: {
+//             userId: req.userId,
+//           },
 
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+//           select: {
+//             id: true,
+//           },
+//         },
+//       },
+//     });
 
-    const formattedPosts = posts.map((post) => ({
-      id: post.id,
-      title: post.title,
-      content: post.content,
+//     const formattedPosts = posts.map((post) => ({
+//       id: post.id,
+//       title: post.title,
+//       content: post.content,
 
-      thumbnail: post.thumbnail,
+//       thumbnail: post.thumbnail,
 
-      code: post.code,
-      codeLanguage: post.codeLanguage,
+//       code: post.code,
+//       codeLanguage: post.codeLanguage,
 
-      images: post.images,
+//       images: post.images,
 
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
+//       createdAt: post.createdAt,
+//       updatedAt: post.updatedAt,
 
-      authorId: post.authorId,
-      author: post.author,
+//       authorId: post.authorId,
+//       author: post.author,
 
-      likeCount: post._count.likes,
-      commentCount: post._count.comments,
+//       likeCount: post._count.likes,
+//       commentCount: post._count.comments,
 
-      likedByCurrentUser: post.likes.length > 0,
-    }));
+//       likedByCurrentUser: post.likes.length > 0,
+//     }));
 
-    return res.status(200).json({
-      success: true,
-      posts: formattedPosts,
-    });
-  } catch (error) {
-    console.error("Get posts error:", error);
+//     return res.status(200).json({
+//       success: true,
+//       posts: formattedPosts,
+//     });
+//   } catch (error) {
+//     console.error("Get posts error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to retrieve posts",
-    });
-  }
-}
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve posts",
+//     });
+//   }
+// }
 
 //
 // DELETE /api/posts/:id

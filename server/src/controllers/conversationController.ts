@@ -1,17 +1,77 @@
 import { Response } from "express";
-
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 
+const userSelect = {
+  id: true,
+  username: true,
+  displayName: true,
+  avatar: true,
+} as const;
+
+const messageSelect = {
+  id: true,
+  content: true,
+  createdAt: true,
+  senderId: true,
+  receiverId: true,
+  read: true,
+} as const;
+
+const MAX_MESSAGE_LENGTH = 2000;
+const DEFAULT_MESSAGE_LIMIT = 50;
+const MAX_MESSAGE_LIMIT = 100;
+
 function getOrderedUserIds(firstUserId: string, secondUserId: string) {
   return firstUserId < secondUserId
-    ? { userOneId: firstUserId, userTwoId: secondUserId }
-    : { userOneId: secondUserId, userTwoId: firstUserId };
+    ? {
+        userOneId: firstUserId,
+        userTwoId: secondUserId,
+      }
+    : {
+        userOneId: secondUserId,
+        userTwoId: firstUserId,
+      };
 }
 
-export async function getConversations(req: AuthRequest, res: Response) {
+function isConversationParticipant(
+  conversation: {
+    userOneId: string;
+    userTwoId: string;
+  },
+  userId: string,
+) {
+  return (
+    conversation.userOneId === userId ||
+    conversation.userTwoId === userId
+  );
+}
+
+function getOtherUser<T extends { id: string }>(
+  conversation: {
+    userOneId: string;
+    userTwoId: string;
+    userOne: T;
+    userTwo: T;
+  },
+  userId: string,
+) {
+  return conversation.userOneId === userId
+    ? conversation.userTwo
+    : conversation.userOne;
+}
+
+/**
+ * GET /api/conversations
+ */
+export async function getConversations(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = req.userId;
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -20,42 +80,40 @@ export async function getConversations(req: AuthRequest, res: Response) {
 
     const conversations = await prisma.conversation.findMany({
       where: {
-        OR: [{ userOneId: req.userId }, { userTwoId: req.userId }],
+        OR: [
+          { userOneId: userId },
+          { userTwoId: userId },
+        ],
       },
+
       orderBy: {
         updatedAt: "desc",
       },
-      include: {
+
+      select: {
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+
+        userOneId: true,
+        userTwoId: true,
+
         userOne: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-          },
+          select: userSelect,
         },
+
         userTwo: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-          },
+          select: userSelect,
         },
+
         messages: {
           orderBy: {
             createdAt: "desc",
           },
           take: 1,
-          select: {
-            id: true,
-            content: true,
-            createdAt: true,
-            senderId: true,
-            receiverId: true,
-            read: true,
-          },
+          select: messageSelect,
         },
+
         _count: {
           select: {
             messages: true,
@@ -64,38 +122,57 @@ export async function getConversations(req: AuthRequest, res: Response) {
       },
     });
 
-    const conversationsWithUnreadCounts = await Promise.all(
-      conversations.map(async (conversation) => {
-        const unreadCount = await prisma.message.count({
-          where: {
-            conversationId: conversation.id,
-            receiverId: req.userId, // Fixed: was incorrectly using undefined `userId`
-            read: false,
-          },
-        });
+    if (conversations.length === 0) {
+      return res.status(200).json({
+        success: true,
+        conversations: [],
+      });
+    }
 
-        return {
-          ...conversation,
-          unreadCount,
-        };
-      }),
+    /*
+     * Fetch all unread counts in ONE query instead of
+     * running one count query for every conversation.
+     */
+    const unreadCounts = await prisma.message.groupBy({
+      by: ["conversationId"],
+      where: {
+        conversationId: {
+          in: conversations.map(
+            (conversation) => conversation.id,
+          ),
+        },
+        receiverId: userId,
+        read: false,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    const unreadCountMap = new Map(
+      unreadCounts.map((item) => [
+        item.conversationId,
+        item._count._all,
+      ]),
     );
 
-    const formattedConversations = conversationsWithUnreadCounts.map(
+    const formattedConversations = conversations.map(
       (conversation) => {
-        const otherUser =
-          conversation.userOneId === req.userId
-            ? conversation.userTwo
-            : conversation.userOne;
+        const otherUser = getOtherUser(
+          conversation,
+          userId,
+        );
 
         return {
           id: conversation.id,
           createdAt: conversation.createdAt,
           updatedAt: conversation.updatedAt,
           otherUser,
-          lastMessage: conversation.messages[0] ?? null,
+          lastMessage:
+            conversation.messages[0] ?? null,
           messageCount: conversation._count.messages,
-          unreadCount: conversation.unreadCount,
+          unreadCount:
+            unreadCountMap.get(conversation.id) ?? 0,
         };
       },
     );
@@ -106,6 +183,7 @@ export async function getConversations(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Get conversations error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve conversations",
@@ -113,25 +191,41 @@ export async function getConversations(req: AuthRequest, res: Response) {
   }
 }
 
-export async function createConversation(req: AuthRequest, res: Response) {
+/**
+ * POST /api/conversations
+ *
+ * Creates a conversation if it doesn't already exist.
+ * Returns the existing conversation when one is already present.
+ */
+export async function createConversation(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = req.userId;
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { userId } = req.body;
+    const { userId: targetUserId } = req.body;
 
-    if (typeof userId !== "string" || !userId.trim()) {
+    if (
+      typeof targetUserId !== "string" ||
+      !targetUserId.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "A user ID is required",
       });
     }
 
-    if (userId === req.userId) {
+    const normalizedTargetUserId = targetUserId.trim();
+
+    if (normalizedTargetUserId === userId) {
       return res.status(400).json({
         success: false,
         message: "You cannot start a conversation with yourself",
@@ -139,13 +233,10 @@ export async function createConversation(req: AuthRequest, res: Response) {
     }
 
     const targetUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        displayName: true,
-        avatar: true,
+      where: {
+        id: normalizedTargetUserId,
       },
+      select: userSelect,
     });
 
     if (!targetUser) {
@@ -155,44 +246,52 @@ export async function createConversation(req: AuthRequest, res: Response) {
       });
     }
 
-    const { userOneId, userTwoId } = getOrderedUserIds(req.userId, userId);
+    const {
+      userOneId,
+      userTwoId,
+    } = getOrderedUserIds(
+      userId,
+      normalizedTargetUserId,
+    );
 
-    const conversation = await prisma.conversation.upsert({
-      where: {
-        userOneId_userTwoId: {
+    const conversation =
+      await prisma.conversation.upsert({
+        where: {
+          userOneId_userTwoId: {
+            userOneId,
+            userTwoId,
+          },
+        },
+
+        update: {},
+
+        create: {
           userOneId,
           userTwoId,
         },
-      },
-      update: {},
-      create: {
-        userOneId,
-        userTwoId,
-      },
-      include: {
-        userOne: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-          },
-        },
-        userTwo: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-          },
-        },
-      },
-    });
 
-    const otherUser =
-      conversation.userOneId === req.userId
-        ? conversation.userTwo
-        : conversation.userOne;
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+
+          userOneId: true,
+          userTwoId: true,
+
+          userOne: {
+            select: userSelect,
+          },
+
+          userTwo: {
+            select: userSelect,
+          },
+        },
+      });
+
+    const otherUser = getOtherUser(
+      conversation,
+      userId,
+    );
 
     return res.status(200).json({
       success: true,
@@ -205,6 +304,7 @@ export async function createConversation(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Create conversation error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to create conversation",
@@ -212,30 +312,46 @@ export async function createConversation(req: AuthRequest, res: Response) {
   }
 }
 
+/**
+ * GET /api/conversations/:id/messages
+ */
 export async function getConversationMessages(
   req: AuthRequest,
   res: Response,
 ) {
   try {
-    if (!req.userId) {
+    const userId = req.userId;
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { id } = req.params;
+    const conversationId = req.params.id;
 
-    if (typeof id !== "string" || !id.trim()) {
+    if (
+      typeof conversationId !== "string" ||
+      !conversationId.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID is required",
       });
     }
 
-    const conversation = await prisma.conversation.findUnique({
-      where: { id },
-    });
+    const conversation =
+      await prisma.conversation.findUnique({
+        where: {
+          id: conversationId,
+        },
+        select: {
+          id: true,
+          userOneId: true,
+          userTwoId: true,
+        },
+      });
 
     if (!conversation) {
       return res.status(404).json({
@@ -244,42 +360,87 @@ export async function getConversationMessages(
       });
     }
 
-    const isParticipant =
-      conversation.userOneId === req.userId ||
-      conversation.userTwoId === req.userId;
-
-    if (!isParticipant) {
+    if (
+      !isConversationParticipant(
+        conversation,
+        userId,
+      )
+    ) {
       return res.status(403).json({
         success: false,
-        message: "You are not a participant in this conversation",
+        message:
+          "You are not a participant in this conversation",
       });
     }
 
-    const messages = await prisma.message.findMany({
-      where: {
-        conversationId: id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
+    const page = Math.max(
+      Number(req.query.page) || 1,
+      1,
+    );
+
+    const limit = Math.min(
+      Math.max(
+        Number(req.query.limit) ||
+          DEFAULT_MESSAGE_LIMIT,
+        1,
+      ),
+      MAX_MESSAGE_LIMIT,
+    );
+
+    const skip = (page - 1) * limit;
+
+    /*
+     * Fetch newest messages first for efficient pagination.
+     * Reverse them before returning so the UI receives
+     * chronological order.
+     */
+    const [messages, totalMessages] =
+      await Promise.all([
+        prisma.message.findMany({
+          where: {
+            conversationId,
           },
-        },
-      },
-    });
+          orderBy: {
+            createdAt: "desc",
+          },
+          skip,
+          take: limit,
+
+          select: {
+            ...messageSelect,
+
+            sender: {
+              select: userSelect,
+            },
+          },
+        }),
+
+        prisma.message.count({
+          where: {
+            conversationId,
+          },
+        }),
+      ]);
+
+    const chronologicalMessages =
+      messages.reverse();
+
+    const hasMore = skip + messages.length < totalMessages;
 
     return res.status(200).json({
       success: true,
-      messages,
+      messages: chronologicalMessages,
+      page,
+      limit,
+      totalMessages,
+      hasMore,
     });
   } catch (error) {
-    console.error("Get conversation messages error:", error);
+    console.error(
+      "Get conversation messages error:",
+      error,
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve messages",
@@ -287,44 +448,71 @@ export async function getConversationMessages(
   }
 }
 
-export async function sendMessage(req: AuthRequest, res: Response) {
+/**
+ * POST /api/conversations/:id/messages
+ */
+export async function sendMessage(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = req.userId;
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { id } = req.params;
+    const conversationId = req.params.id;
 
-    if (typeof id !== "string" || !id.trim()) {
+    if (
+      typeof conversationId !== "string" ||
+      !conversationId.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID is required",
       });
     }
+
     const { content } = req.body;
 
-    if (typeof content !== "string" || !content.trim()) {
+    if (typeof content !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Message content is required",
+      });
+    }
+
+    const trimmedContent = content.trim();
+
+    if (!trimmedContent) {
       return res.status(400).json({
         success: false,
         message: "Message cannot be empty",
       });
     }
 
-    const trimmedContent = content.trim();
-
-    if (trimmedContent.length > 2000) {
+    if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({
         success: false,
-        message: "Message cannot exceed 2000 characters",
+        message: `Message cannot exceed ${MAX_MESSAGE_LENGTH} characters`,
       });
     }
 
-    const conversation = await prisma.conversation.findUnique({
-      where: { id },
-    });
+    const conversation =
+      await prisma.conversation.findUnique({
+        where: {
+          id: conversationId,
+        },
+        select: {
+          id: true,
+          userOneId: true,
+          userTwoId: true,
+        },
+      });
 
     if (!conversation) {
       return res.status(404).json({
@@ -333,46 +521,60 @@ export async function sendMessage(req: AuthRequest, res: Response) {
       });
     }
 
-    const isParticipant =
-      conversation.userOneId === req.userId ||
-      conversation.userTwoId === req.userId;
-
-    if (!isParticipant) {
+    if (
+      !isConversationParticipant(
+        conversation,
+        userId,
+      )
+    ) {
       return res.status(403).json({
         success: false,
-        message: "You are not a participant in this conversation",
+        message:
+          "You are not a participant in this conversation",
       });
     }
 
     const receiverId =
-      conversation.userOneId === req.userId
+      conversation.userOneId === userId
         ? conversation.userTwoId
         : conversation.userOneId;
 
-    const message = await prisma.message.create({
-      data: {
-        content: trimmedContent,
-        conversationId: id,
-        senderId: req.userId,
-        receiverId,
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-          },
-        },
-      },
-    });
+    /*
+     * Message creation and conversation activity
+     * update happen in the same transaction.
+     */
+    const message = await prisma.$transaction(
+      async (tx) => {
+        const createdMessage =
+          await tx.message.create({
+            data: {
+              content: trimmedContent,
+              conversationId,
+              senderId: userId,
+              receiverId,
+            },
 
-    // Keep conversation sorted by latest activity
-    await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { updatedAt: new Date() },
-    });
+            select: {
+              ...messageSelect,
+
+              sender: {
+                select: userSelect,
+              },
+            },
+          });
+
+        await tx.conversation.update({
+          where: {
+            id: conversationId,
+          },
+          data: {
+            updatedAt: new Date(),
+          },
+        });
+
+        return createdMessage;
+      },
+    );
 
     return res.status(201).json({
       success: true,
@@ -380,6 +582,7 @@ export async function sendMessage(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Send message error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to send message",
@@ -387,27 +590,46 @@ export async function sendMessage(req: AuthRequest, res: Response) {
   }
 }
 
-export async function markMessagesAsRead(req: AuthRequest, res: Response) {
+/**
+ * PATCH /api/conversations/:id/read
+ */
+export async function markMessagesAsRead(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = req.userId;
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { id } = req.params;
+    const conversationId = req.params.id;
 
-    if (typeof id !== "string" || !id.trim()) {
+    if (
+      typeof conversationId !== "string" ||
+      !conversationId.trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID is required",
       });
-    };
+    }
 
-    const conversation = await prisma.conversation.findUnique({
-      where: { id },
-    });
+    const conversation =
+      await prisma.conversation.findUnique({
+        where: {
+          id: conversationId,
+        },
+        select: {
+          id: true,
+          userOneId: true,
+          userTwoId: true,
+        },
+      });
 
     if (!conversation) {
       return res.status(404).json({
@@ -416,34 +638,42 @@ export async function markMessagesAsRead(req: AuthRequest, res: Response) {
       });
     }
 
-    const isParticipant =
-      conversation.userOneId === req.userId ||
-      conversation.userTwoId === req.userId;
-
-    if (!isParticipant) {
+    if (
+      !isConversationParticipant(
+        conversation,
+        userId,
+      )
+    ) {
       return res.status(403).json({
         success: false,
-        message: "You are not a participant in this conversation",
+        message:
+          "You are not a participant in this conversation",
       });
     }
 
-    await prisma.message.updateMany({
-      where: {
-        conversationId: id,
-        receiverId: req.userId,
-        read: false,
-      },
-      data: {
-        read: true,
-      },
-    });
+    const result =
+      await prisma.message.updateMany({
+        where: {
+          conversationId,
+          receiverId: userId,
+          read: false,
+        },
+        data: {
+          read: true,
+        },
+      });
 
     return res.status(200).json({
       success: true,
       message: "Messages marked as read",
+      updatedCount: result.count,
     });
   } catch (error) {
-    console.error("Mark messages as read error:", error);
+    console.error(
+      "Mark messages as read error:",
+      error,
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to mark messages as read",

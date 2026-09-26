@@ -2,29 +2,34 @@ import {
   Bell,
   Mail,
   LogOut,
-  Search,
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 
 import { useAuth } from "../../../context/authContext/authContext";
 import { logoutUser } from "../../../services/api/authApi";
 import { useNotifications } from "../../../context/NotiificationContext/NotificationContext";
 import { useMessages } from "../../../context/MessageContext/MessageContext";
+import UserSearch from "../../../components/search/UserSearch/UserSearch";
 
 import "./Navbar.css";
 import NotificationPanel from "../../notifications/NotificationPanel/NotificationPanel";
 
-
 export default function Navbar() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] =
-  useState(false);
+    useState(false);
+
   const navigate = useNavigate();
+
   const { user, clearUser } = useAuth();
-  const { unreadCount: notificationUnreadCount } = useNotifications();
-  const { unreadCount: messageUnreadCount } = useMessages();
+
+  const {
+    unreadCount: notificationUnreadCount,
+  } = useNotifications();
+
+  const {
+    unreadCount: messageUnreadCount,
+  } = useMessages();
 
   const handleLogout = async () => {
     try {
@@ -35,105 +40,105 @@ export default function Navbar() {
       console.error("Logout failed:", error);
     }
   };
+
   return (
     <header className="navbar">
       <div className="navbar__inner">
+
+        {/* Logo */}
         <a href="/" className="navbar__logo">
-          <span className="navbar__logo-mark">R</span>
-          <span className="navbar__logo-text">Royal</span>
+          <span className="navbar__logo-mark">
+            T
+          </span>
+
+          <span className="navbar__logo-text">
+            TechWitter
+          </span>
         </a>
 
+        {/* User Search */}
         <div className="navbar__search">
-  <Search
-    className="navbar__search-icon"
-    size={18}
-  />
+          <UserSearch />
+        </div>
 
-  <input
-  type="search"
-  value={searchQuery}
-  onChange={(event) =>
-    setSearchQuery(event.target.value)
-  }
-  onKeyDown={(event) => {
-    if (event.key === "Enter") {
-      setShowNotifications(false);
-      navigate(
-        `/explore?q=${encodeURIComponent(
-          searchQuery,
-        )}`,
-      );
-    }
-  }}
-  placeholder="Search"
-  aria-label="Search"
-/>
-</div>
+        {/* Actions */}
+        <div className="navbar__actions">
 
-      <div className="navbar__actions">
-  <div className="navbar__notification">
-  <button
-    type="button"
-    className="navbar__icon-button"
-    onClick={() =>
-      setShowNotifications((current) => !current)
-    }
-    aria-label={`Notifications${
-      notificationUnreadCount > 0
-        ? `, ${notificationUnreadCount} unread`
-        : ""
-    }`}
-    aria-expanded={showNotifications}
-  >
-    <Bell size={20} />
+          {/* Notifications */}
+          <div className="navbar__notification">
+            <button
+              type="button"
+              className="navbar__icon-button"
+              onClick={() =>
+                setShowNotifications(
+                  (current) => !current,
+                )
+              }
+              aria-label={`Notifications${
+                notificationUnreadCount > 0
+                  ? `, ${notificationUnreadCount} unread`
+                  : ""
+              }`}
+              aria-expanded={showNotifications}
+            >
+              <Bell size={20} />
 
-    {notificationUnreadCount> 0 && (
-      <span className="navbar__notification-badge">
-        {notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}
-      </span>
-    )}
-  </button>
+              {notificationUnreadCount > 0 && (
+                <span className="navbar__notification-badge">
+                  {notificationUnreadCount > 99
+                    ? "99+"
+                    : notificationUnreadCount}
+                </span>
+              )}
+            </button>
 
-  {showNotifications && (
-    <NotificationPanel
-      onClose={() => setShowNotifications(false)}
-    />
-  )}
-</div>
+            {showNotifications && (
+              <NotificationPanel
+                onClose={() =>
+                  setShowNotifications(false)
+                }
+              />
+            )}
+          </div>
 
- <button
-  type="button"
-  className="navbar__icon-button"
-  onClick={() => navigate("/messages")}
-  aria-label={`Messages${
-    messageUnreadCount > 0
-      ? `, ${messageUnreadCount} unread`
-      : ""
-  }`}
->
-  <Mail size={20} />
+          {/* Messages */}
+          <button
+            type="button"
+            className="navbar__icon-button"
+            onClick={() => navigate("/messages")}
+            aria-label={`Messages${
+              messageUnreadCount > 0
+                ? `, ${messageUnreadCount} unread`
+                : ""
+            }`}
+          >
+            <Mail size={20} />
 
-  {messageUnreadCount > 0 && (
-    <span className="navbar__message-badge">
-      {messageUnreadCount > 99
-        ? "99+"
-        : messageUnreadCount}
-    </span>
-  )}
-</button>
+            {messageUnreadCount > 0 && (
+              <span className="navbar__message-badge">
+                {messageUnreadCount > 99
+                  ? "99+"
+                  : messageUnreadCount}
+              </span>
+            )}
+          </button>
 
- <button
+          {/* Profile */}
+          <button
             className="navbar__avatar"
             type="button"
             aria-label="Open profile"
             onClick={() => {
-  setShowNotifications(false);
-  navigate("/profile");
-}}
+              setShowNotifications(false);
+              navigate("/profile");
+            }}
           >
-            {user?.displayName?.charAt(0).toUpperCase() || "U"}
+            {user?.displayName
+              ?.charAt(0)
+              .toUpperCase() || "U"}
           </button>
 
+          {/* Logout */}
           <button
             className="navbar__icon-button"
             type="button"
@@ -142,7 +147,8 @@ export default function Navbar() {
           >
             <LogOut size={20} />
           </button>
-</div>
+
+        </div>
       </div>
     </header>
   );

@@ -3,7 +3,6 @@ import {
   Bookmark,
   Home,
   MessageCircle,
-  Search,
   User,
 } from "lucide-react";
 
@@ -25,17 +24,6 @@ export default function MobileNav() {
         <span>Home</span>
       </NavLink>
 
-      <NavLink
-        to="/explore"
-        className={({ isActive }) =>
-          `mobile-nav__link ${
-            isActive ? "mobile-nav__link--active" : ""
-          }`
-        }
-      >
-        <Search size={21} />
-        <span>Explore</span>
-      </NavLink>
 
       <NavLink
         to="/messages"

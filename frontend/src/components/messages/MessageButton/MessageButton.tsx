@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { createConversation } from "../../../services/api/conversationApi";
+import { createConversation } from "../../../services/api/messageApi";
 
 import "./MessageButton.css";
 

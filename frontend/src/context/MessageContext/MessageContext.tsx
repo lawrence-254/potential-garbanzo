@@ -10,7 +10,7 @@ import {
 import {
   getConversations,
   type Conversation,
-} from "../../services/api/conversationApi";
+} from "../../services/api/messageApi";
 
 interface MessageContextValue {
   conversations: Conversation[];
@@ -188,4 +188,3 @@ export function useMessages() {
 
   return context;
 }
-

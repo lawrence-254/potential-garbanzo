@@ -18,7 +18,7 @@ import {
   sendMessage,
   type ConversationUser,
   type Message,
-} from "../../../services/api/conversationApi";
+} from "../../../services/api/messageApi";
 
 import "./ChatWindow.css";
 

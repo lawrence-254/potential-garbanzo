@@ -2,7 +2,6 @@ import {
   Bookmark,
   Home,
   MessageCircle,
-  Search,
   Settings,
   User,
 } from "lucide-react";
@@ -29,15 +28,6 @@ export default function Sidebar() {
             <span>Home</span>
           </NavLink>
 
-          <NavLink
-            to="/explore"
-            className={({ isActive }) =>
-              `sidebar__link ${isActive ? "sidebar__link--active" : ""}`
-            }
-          >
-            <Search size={21}/>
-            <span>Explore</span>
-          </NavLink>
 
           <NavLink
             to="/messages"

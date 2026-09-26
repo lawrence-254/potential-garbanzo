@@ -6,7 +6,6 @@ import PublicRoute from "./components/auth/PublicRoute/PublicRoute";
 
 
 import Home from "./pages/Home/Home";
-import Explore from "./pages/Explore/Explore";
 import Messages from "./pages/Messages/Messages";
 import Bookmarks from "./pages/Bookmarks/Bookmarks";
 import Profile from "./pages/Profile/Profile";
@@ -33,7 +32,6 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/post/:postId" element={<PostDetails />} />
-            <Route path="/explore" element={<Explore />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/profile" element={<Profile />} />

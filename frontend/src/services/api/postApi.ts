@@ -15,7 +15,10 @@ interface CreatePostResponse {
   message: string;
   post: Post;
 }
-
+interface DeletePostResponse {
+  success: boolean;
+  message: string;
+}
 //
 // GET /api/posts?feed=following | everyone
 //
@@ -54,4 +57,14 @@ export async function createPost(
   });
 
   return response.post;
+}
+export async function deletePost(
+  postId: string,
+): Promise<void> {
+  await apiRequest<DeletePostResponse>(
+    `/posts/${postId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }

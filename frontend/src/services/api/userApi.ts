@@ -1,5 +1,5 @@
 import { apiRequest } from "./api";
-import type { Post } from "./postApi";
+import type { Post } from "../../types/post";
 
 export interface PublicUserProfile {
   id: string;

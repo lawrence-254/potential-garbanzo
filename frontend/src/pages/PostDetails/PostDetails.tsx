@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   MessageCircle,
   Send,
@@ -8,53 +10,58 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getPost } from "../../services/api/postApi";
+import { useAuth } from "../../context/authContext/authContext";
+
 import {
   createComment,
   deleteComment,
   getComments,
 } from "../../services/api/commentApi";
+
+import { getPost } from "../../services/api/postApi";
+
 import {
   likePost,
   unlikePost,
 } from "../../services/api/likeApi";
 
-import type { Post } from "../../types/post";
 import type { Comment } from "../../services/api/commentApi";
-
-import { useAuth } from "../../context/authContext/authContext";
+import type { Post } from "../../types/post";
 
 import { getImageUrl } from "../../utils/imageUrl";
 
 import "./PostDetails.css";
 
-function PostDetails() {
-  const { postId } = useParams<{ postId: string }>();
+export default function PostDetails() {
   const navigate = useNavigate();
+  const { postId } = useParams<{ postId: string }>();
   const { user } = useAuth();
 
   const [post, setPost] = useState<Post | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
-  const [commentText, setCommentText] = useState("");
-
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
-  const [liking, setLiking] = useState(false);
-  const [commentSubmitting, setCommentSubmitting] =
-    useState(false);
+
+  const [error, setError] = useState("");
+
+  const [commentText, setCommentText] = useState("");
+
+  const [submittingComment, setSubmittingComment] = useState(false);
+
   const [deletingCommentId, setDeletingCommentId] =
     useState<string | null>(null);
 
-  const [error, setError] = useState("");
-  const [commentError, setCommentError] = useState("");
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [liking, setLiking] = useState(false);
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     if (!postId) {
-      setError("Post not found.");
+      setError("Post ID is missing.");
       setLoading(false);
       return;
     }
@@ -67,13 +74,14 @@ function PostDetails() {
         const data = await getPost(postId);
 
         setPost(data);
-        // Safe access
-        setLikeCount((data.likes ?? []).length);
+        setLiked(data.likedByCurrentUser);
+        setLikeCount(data.likeCount);
+        setCurrentImageIndex(0);
       } catch (error) {
         setError(
           error instanceof Error
             ? error.message
-            : "Failed to load post."
+            : "Failed to load post.",
         );
       } finally {
         setLoading(false);
@@ -84,34 +92,17 @@ function PostDetails() {
   }, [postId]);
 
   useEffect(() => {
-    if (!post || !user) {
-      return;
-    }
-
-    // Safe access – this was the crashing line
-    const likes = post.likes ?? [];
-    setLiked(likes.some((like) => like.userId === user.id));
-  }, [post, user]);
-
-  useEffect(() => {
-    if (!postId) {
-      return;
-    }
+    if (!postId) return;
 
     const loadComments = async () => {
       try {
         setCommentsLoading(true);
-        setCommentError("");
 
         const data = await getComments(postId);
 
         setComments(data);
       } catch (error) {
-        setCommentError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load comments."
-        );
+        console.error("Failed to load comments:", error);
       } finally {
         setCommentsLoading(false);
       }
@@ -119,86 +110,131 @@ function PostDetails() {
 
     loadComments();
   }, [postId]);
+  const handleOpenProfile = (
+    event: React.MouseEvent<HTMLElement>,
+    username?: string,
+  ) => {
+    event.stopPropagation();
 
+    if (!username) return;
+
+    navigate(`/profile/${username}`);
+  };
   const handleLike = async () => {
-    if (!postId || liking) {
-      return;
-    }
+    if (!post || liking) return;
 
     try {
       setLiking(true);
 
       const response = liked
-        ? await unlikePost(postId)
-        : await likePost(postId);
+        ? await unlikePost(post.id)
+        : await likePost(post.id);
 
       setLiked(response.liked);
       setLikeCount(response.likeCount);
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to update like."
+
+      setPost((current) =>
+        current
+          ? {
+              ...current,
+              likedByCurrentUser: response.liked,
+              likeCount: response.likeCount,
+            }
+          : current,
       );
+    } catch (error) {
+      console.error("Failed to update like:", error);
     } finally {
       setLiking(false);
     }
   };
 
   const handleSubmitComment = async (
-    event: FormEvent<HTMLFormElement>
+    event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
 
-    if (!postId || !commentText.trim() || commentSubmitting) {
+    if (!postId || !commentText.trim()) {
       return;
     }
 
     try {
-      setCommentSubmitting(true);
-      setCommentError("");
+      setSubmittingComment(true);
 
-      const newComment = await createComment(
+      const comment = await createComment(
         postId,
-        commentText.trim()
+        commentText.trim(),
       );
 
-      setComments((current) => [...current, newComment]);
+      setComments((current) => [
+        ...current,
+        comment,
+      ]);
+
       setCommentText("");
     } catch (error) {
-      setCommentError(
+      window.alert(
         error instanceof Error
           ? error.message
-          : "Failed to add comment."
+          : "Failed to add comment.",
       );
     } finally {
-      setCommentSubmitting(false);
+      setSubmittingComment(false);
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (deletingCommentId) {
-      return;
-    }
+  const handleDeleteComment = async (
+    commentId: string,
+  ) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this comment?",
+    );
+
+    if (!confirmed) return;
 
     try {
       setDeletingCommentId(commentId);
-      setCommentError("");
 
       await deleteComment(commentId);
 
       setComments((current) =>
-        current.filter((comment) => comment.id !== commentId)
+        current.filter(
+          (comment) => comment.id !== commentId,
+        ),
       );
     } catch (error) {
-      setCommentError(
+      window.alert(
         error instanceof Error
           ? error.message
-          : "Failed to delete comment."
+          : "Failed to delete comment.",
       );
     } finally {
       setDeletingCommentId(null);
     }
+  };
+
+  const goToPreviousImage = () => {
+    if (!post || post.images.length <= 1) return;
+
+    setCurrentImageIndex((current) =>
+      current === 0
+        ? post.images.length - 1
+        : current - 1,
+    );
+  };
+
+  const goToNextImage = () => {
+    if (!post || post.images.length <= 1) return;
+
+    setCurrentImageIndex((current) =>
+      current === post.images.length - 1
+        ? 0
+        : current + 1,
+    );
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentImageIndex(index);
   };
 
   if (loading) {
@@ -223,17 +259,16 @@ function PostDetails() {
           Back
         </button>
 
-        <div className="post-details__status">
+        <div className="post-details__status post-details__status--error">
           {error || "Post not found."}
         </div>
       </div>
     );
   }
 
-  // Safe derived values
-  const images = post.images ?? [];
-  const authorName = post.author?.name ?? "Unknown";
-  const authorUsername = post.author?.username ?? "unknown";
+  const authorName =
+    post.author?.displayName?.trim() ||
+    "Unknown";
 
   return (
     <div className="post-details">
@@ -246,23 +281,46 @@ function PostDetails() {
         Back
       </button>
 
-      <article className="post-details__card">
+      <article className="post-details__post">
         <header className="post-details__author">
-          <div className="post-details__avatar">
-            {authorName.charAt(0).toUpperCase()}
-          </div>
+          <div
+            className="post-details__author-link"
+            onClick={(event) =>
+              handleOpenProfile(event, post.author?.username)
+            }
+            role="link"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" ||
+                event.key === " "
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
 
-          <div>
-            <h2>{authorName}</h2>
-            <p>@{authorUsername}</p>
+                if (post.authorId) {
+                  navigate(`/profile/${post.author.username}`);
+                }
+              }
+            }}
+            aria-label={`View ${authorName}'s profile`}
+          >
+            <div className="post-details__avatar">
+              {authorName.charAt(0).toUpperCase()}
+            </div>
+
+            <div>
+              <strong>{authorName}</strong>
+
+              <span>
+                @{post.author?.username ?? "unknown"}
+              </span>
+            </div>
           </div>
         </header>
 
         <div className="post-details__content">
           <h1>{post.title}</h1>
-
-          <p className="post-details__text">{post.content}</p>
-
           {post.thumbnail && (
             <div className="post-details__thumbnail">
               <img
@@ -272,22 +330,114 @@ function PostDetails() {
             </div>
           )}
 
-          {images.length > 0 && (
-            <div className="post-details__gallery">
-              {images.map((image) => (
-                <img
-                  key={image.id}
-                  src={getImageUrl(image.url)}
-                  alt=""
-                />
-              ))}
-            </div>
-          )}
+          <div className="post-details__text">
+            {(() => {
+              const paragraphs = post.content
+                .split(/\n\s*\n/)
+                .map((paragraph) => paragraph.trim())
+                .filter(Boolean);
+
+              const hasImages = post.images.length > 0;
+
+              const insertAfter = Math.min(2, paragraphs.length);
+
+              return (
+                <>
+                  {paragraphs.map((paragraph, index) => (
+                    <div key={index}>
+                      <p>{paragraph}</p>
+
+                      {hasImages && index + 1 === insertAfter && (
+                        <div
+                          className="post-details__inline-carousel"
+                          aria-label="Post image gallery"
+                        >
+                          <div className="post-details__carousel-stage">
+                            <img
+                              key={post.images[currentImageIndex].id}
+                              className="post-details__carousel-image"
+                              src={getImageUrl(
+                                post.images[currentImageIndex].url,
+                              )}
+                              alt={`Post image ${
+                                currentImageIndex + 1
+                              } of ${post.images.length}`}
+                            />
+
+                            {post.images.length > 1 && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="post-details__carousel-button post-details__carousel-button--previous"
+                                  onClick={goToPreviousImage}
+                                  aria-label="Previous image"
+                                >
+                                  <ChevronLeft size={22} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="post-details__carousel-button post-details__carousel-button--next"
+                                  onClick={goToNextImage}
+                                  aria-label="Next image"
+                                >
+                                  <ChevronRight size={22} />
+                                </button>
+
+                                <div className="post-details__carousel-counter">
+                                  {currentImageIndex + 1} /{" "}
+                                  {post.images.length}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {post.images.length > 1 && (
+                            <div className="post-details__carousel-footer">
+                              <div
+                                className="post-details__carousel-dots"
+                                aria-label="Choose image"
+                              >
+                                {post.images.map((image, imageIndex) => (
+                                  <button
+                                    key={image.id}
+                                    type="button"
+                                    className={`post-details__carousel-dot ${
+                                      imageIndex === currentImageIndex
+                                        ? "post-details__carousel-dot--active"
+                                        : ""
+                                    }`}
+                                    onClick={() =>
+                                      goToImage(imageIndex)
+                                    }
+                                    aria-label={`Go to image ${
+                                      imageIndex + 1
+                                    }`}
+                                    aria-current={
+                                      imageIndex === currentImageIndex
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
+          </div>
+
+
 
           {post.code && (
             <div className="post-details__code">
               <div className="post-details__code-header">
-                <span>{post.codeLanguage || "Code"}</span>
+                <span>
+                  {post.codeLanguage || "Code"}
+                </span>
               </div>
 
               <pre>
@@ -301,100 +451,139 @@ function PostDetails() {
           <button
             type="button"
             className={`post-details__action ${
-              liked ? "post-details__action--liked" : ""
+              liked
+                ? "post-details__action--liked"
+                : ""
             }`}
             onClick={handleLike}
             disabled={liking}
-            aria-label={liked ? "Unlike post" : "Like post"}
           >
             <Heart
               size={20}
-              fill={liked ? "currentColor" : "none"}
+              fill={
+                liked ? "currentColor" : "none"
+              }
             />
             <span>{likeCount}</span>
           </button>
 
-          <span className="post-details__action">
+          <div className="post-details__action">
             <MessageCircle size={20} />
             <span>{comments.length}</span>
-          </span>
+          </div>
         </footer>
+      </article>
 
-        <section className="post-details__comments">
+      <section className="post-details__comments">
+        <div className="post-details__comments-header">
           <h2>Comments</h2>
+          <span>{comments.length}</span>
+        </div>
 
-          <form
-            className="post-details__comment-form"
-            onSubmit={handleSubmitComment}
+        <form
+          className="post-details__comment-form"
+          onSubmit={handleSubmitComment}
+        >
+          <textarea
+            value={commentText}
+            onChange={(event) =>
+              setCommentText(event.target.value)
+            }
+            placeholder="Write a comment..."
+            maxLength={500}
+            rows={3}
+            disabled={submittingComment}
+          />
+
+          <button
+            type="submit"
+            disabled={
+              submittingComment ||
+              !commentText.trim()
+            }
           >
-            <textarea
-              value={commentText}
-              onChange={(event) =>
-                setCommentText(event.target.value)
-              }
-              placeholder="Write a comment..."
-              rows={3}
-              maxLength={1000}
-            />
+            <Send size={17} />
 
-            <button
-              type="submit"
-              disabled={
-                commentSubmitting || !commentText.trim()
-              }
-            >
-              <Send size={18} />
-              {commentSubmitting ? "Posting..." : "Comment"}
-            </button>
-          </form>
+            {submittingComment
+              ? "Posting..."
+              : "Comment"}
+          </button>
+        </form>
 
-          {commentError && (
-            <p className="post-details__comment-error">
-              {commentError}
-            </p>
-          )}
+        {commentsLoading ? (
+          <div className="post-details__comments-status">
+            Loading comments...
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="post-details__comments-status">
+            No comments yet. Be the first to comment.
+          </div>
+        ) : (
+          <div className="post-details__comment-list">
+            {comments.map((comment) => {
+              const commentAuthor =
+                comment.author?.displayName?.trim() ||
+                "Unknown";
 
-          {commentsLoading ? (
-            <div className="post-details__comments-status">
-              Loading comments...
-            </div>
-          ) : comments.length === 0 ? (
-            <div className="post-details__comments-status">
-              No comments yet. Be the first to comment.
-            </div>
-          ) : (
-            <div className="post-details__comment-list">
-              {comments.map((comment) => (
+              const isCommentOwner =
+                comment.author?.id === user?.id;
+
+              return (
                 <article
                   key={comment.id}
                   className="post-details__comment"
                 >
-                  <div className="post-details__comment-avatar">
-                    {(comment.author?.displayName ?? "?")
-                      .charAt(0)
-                      .toUpperCase()}
+                  <div
+                    className="post-details__comment-avatar"
+                    onClick={(event) =>
+                      handleOpenProfile(event, comment.author?.username)
+                    }
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                      ) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        if (comment.author?.id) {
+                          navigate(`/profile/${comment.author.username}`);
+                        }
+                      }
+                    }}
+                    aria-label={`View ${commentAuthor}'s profile`}
+                  >
+                    {commentAuthor.charAt(0).toUpperCase()}
                   </div>
 
                   <div className="post-details__comment-body">
-                    <div className="post-details__comment-header">
+                    <div className="post-details__comment-top">
                       <div>
                         <strong>
-                          {comment.author?.displayName ??
-                            "Unknown"}
+                          {commentAuthor}
                         </strong>
+
                         <span>
-                          @{comment.author?.username ?? "unknown"}
+                          @
+                          {comment.author?.username ??
+                            "unknown"}
                         </span>
                       </div>
 
-                      {user?.id === comment.author?.id && (
+                      {isCommentOwner && (
                         <button
                           type="button"
+                          className="post-details__comment-delete"
                           onClick={() =>
-                            handleDeleteComment(comment.id)
+                            handleDeleteComment(
+                              comment.id,
+                            )
                           }
                           disabled={
-                            deletingCommentId === comment.id
+                            deletingCommentId ===
+                            comment.id
                           }
                           aria-label="Delete comment"
                         >
@@ -406,13 +595,11 @@ function PostDetails() {
                     <p>{comment.content}</p>
                   </div>
                 </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
-
-export default PostDetails;

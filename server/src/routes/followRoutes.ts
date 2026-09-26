@@ -8,8 +8,9 @@ import { requireAuth } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-router.get("/status/:userId", requireAuth, getFollowStatus);
-router.post("/:userId", requireAuth, followUser);
-router.delete("/:userId", requireAuth, unfollowUser);
+
+router.post("/:username", requireAuth, followUser);
+router.delete("/:username", requireAuth, unfollowUser);
+router.get("/:username/status", requireAuth, getFollowStatus);
 
 export default router;

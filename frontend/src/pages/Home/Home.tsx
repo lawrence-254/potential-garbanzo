@@ -23,30 +23,31 @@ export default function Home() {
       setLoading(true);
       setError("");
 
-      // Pass the selected feed type to the API
       const data = await getPosts({ feed: type });
+
       setPosts(data);
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Failed to load posts.",
+        error instanceof Error
+          ? error.message
+          : "Failed to load posts.",
       );
     } finally {
       setLoading(false);
     }
   };
 
+  const handlePostCreated = async () => {
+    setPostModalOpen(false);
+    await loadPosts();
+  };
   const handlePostDeleted = (postId: string) => {
     setPosts((currentPosts) =>
-      currentPosts.filter((post) => post.id !== postId),
+      currentPosts.filter(
+        (post) => post.id !== postId,
+      ),
     );
   };
-
-  const handlePostCreated = () => {
-    setPostModalOpen(false);
-    loadPosts();
-  };
-
-  // Reload posts whenever the user switches tabs
   useEffect(() => {
     loadPosts(feedType);
   }, [feedType]);
@@ -70,21 +71,25 @@ export default function Home() {
       </button>
 
       <section className="home__feed">
-        {/* ===== Feed type selector ===== */}
         <div className="home__feed-tabs">
           <button
             type="button"
             className={`home__feed-tab ${
-              feedType === "following" ? "home__feed-tab--active" : ""
+              feedType === "following"
+                ? "home__feed-tab--active"
+                : ""
             }`}
             onClick={() => setFeedType("following")}
           >
             Following
           </button>
+
           <button
             type="button"
             className={`home__feed-tab ${
-              feedType === "everyone" ? "home__feed-tab--active" : ""
+              feedType === "everyone"
+                ? "home__feed-tab--active"
+                : ""
             }`}
             onClick={() => setFeedType("everyone")}
           >
@@ -94,8 +99,11 @@ export default function Home() {
 
         <div className="home__feed-header">
           <h2>
-            {feedType === "following" ? "Your Feed" : "All Posts"}
+            {feedType === "following"
+              ? "Your Feed"
+              : "All Posts"}
           </h2>
+
           <p>
             {feedType === "following"
               ? "Posts from you and people you follow."
@@ -104,11 +112,15 @@ export default function Home() {
         </div>
 
         {loading && (
-          <div className="home__status">Loading posts...</div>
+          <div className="home__status">
+            Loading posts...
+          </div>
         )}
 
         {error && (
-          <div className="home__status home__status--error">{error}</div>
+          <div className="home__status home__status--error">
+            {error}
+          </div>
         )}
 
         {!loading && !error && posts.length === 0 && (
@@ -118,6 +130,7 @@ export default function Home() {
                 ? "Your feed is empty"
                 : "No posts yet"}
             </h2>
+
             <p>
               {feedType === "following"
                 ? "Create your first post or follow people to see their posts here."

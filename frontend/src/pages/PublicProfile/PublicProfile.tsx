@@ -125,7 +125,7 @@ export default function PublicProfile() {
         </div>
 
         <FollowButton
-  userId={profile.id}
+  username={profile.username}
   onFollowerCountChange={(count) =>
     setProfile((current) =>
       current

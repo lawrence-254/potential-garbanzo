@@ -1,92 +1,120 @@
-import { useEffect, useState } from "react";
-
-import { useAuth } from "../../../context/authContext/authContext";
+import { useEffect, useRef, useState } from "react";
 
 import {
   followUser,
-  getFollowStatus,
   unfollowUser,
+  getFollowStatus,
 } from "../../../services/api/followApi";
 
 import "./FollowButton.css";
 
 interface FollowButtonProps {
-  userId: string;
+  username: string;
   onFollowerCountChange?: (count: number) => void;
 }
 
 export default function FollowButton({
-  userId,
+  username,
   onFollowerCountChange,
 }: FollowButtonProps) {
-  const { user } = useAuth();
-
   const [following, setFollowing] = useState(false);
+  const [self, setSelf] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const isOwnProfile = user?.id === userId;
+  // Keep the latest callback without making the effect
+  // re-run every time the parent creates a new function.
+  const onFollowerCountChangeRef = useRef(onFollowerCountChange);
 
   useEffect(() => {
-    if (isOwnProfile) {
-      setLoading(false);
-      return;
-    }
+    onFollowerCountChangeRef.current = onFollowerCountChange;
+  }, [onFollowerCountChange]);
 
-    const loadStatus = async () => {
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadFollowStatus() {
+      setLoading(true);
+      setError("");
+
       try {
-        const response = await getFollowStatus(userId);
-        setFollowing(response.following);
+        const response = await getFollowStatus(username);
 
+        if (!mounted) return;
+
+        setFollowing(response.following);
+        setSelf(response.self);
+
+        onFollowerCountChangeRef.current?.(response.followerCount);
       } catch (error) {
-        console.error(
-          "Failed to load follow status:",
-          error,
+        if (!mounted) return;
+
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load follow status",
         );
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    };
-
-    loadStatus();
-  }, [userId, isOwnProfile]);
-
-  const handleFollow = async (response: any) => {
-    if (processing) {
-      return;
     }
+
+    loadFollowStatus();
+
+    return () => {
+      mounted = false;
+    };
+  }, [username]);
+
+  async function handleFollowToggle() {
+    if (actionLoading || self) return;
 
     try {
-      setProcessing(true);
+      setActionLoading(true);
+      setError("");
 
       if (following) {
-        await unfollowUser(userId);
+        const response = await unfollowUser(username);
+
         setFollowing(false);
-        onFollowerCountChange?.(response.followerCount);
+
+        onFollowerCountChangeRef.current?.(
+          response.followerCount,
+        );
       } else {
-        await followUser(userId);
+        const response = await followUser(username);
+
         setFollowing(true);
-        onFollowerCountChange?.(response.followerCount);
+
+        onFollowerCountChangeRef.current?.(
+          response.followerCount,
+        );
       }
     } catch (error) {
-      console.error(
-        "Follow action failed:",
-        error,
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to update follow status",
       );
     } finally {
-      setProcessing(false);
+      setActionLoading(false);
     }
-  };
+  }
 
-  if (isOwnProfile) {
+  // Don't show a follow button on your own profile.
+  if (self) {
     return null;
   }
 
+  // Initial status check.
   if (loading) {
     return (
       <button
-        className="follow-button"
         type="button"
+        className="follow-button follow-button-loading"
         disabled
       >
         Loading...
@@ -95,21 +123,27 @@ export default function FollowButton({
   }
 
   return (
-    <button
-      className={`follow-button ${
-        following
-          ? "follow-button--following"
-          : ""
-      }`}
-      type="button"
-      onClick={handleFollow}
-      disabled={processing}
-    >
-      {processing
-        ? "..."
-        : following
-          ? "Following"
-          : "Follow"}
-    </button>
+    <div className="follow-button-wrapper">
+      <button
+        type="button"
+        className={`follow-button ${
+          following ? "following" : ""
+        }`}
+        onClick={handleFollowToggle}
+        disabled={actionLoading}
+      >
+        {actionLoading
+          ? "..."
+          : following
+            ? "Following"
+            : "Follow"}
+      </button>
+
+      {error && (
+        <p className="follow-button-error">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

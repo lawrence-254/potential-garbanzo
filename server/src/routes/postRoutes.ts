@@ -12,7 +12,14 @@ const router = Router();
 
 router.get("/", requireAuth, getPosts);
 router.get("/:id", requireAuth, getPost);
-router.post("/", requireAuth,postUpload.array("images", 9), createPost);
+
+router.post(
+  "/",
+  requireAuth,
+  postUpload.array("images", 9),
+  createPost
+);
+
 router.delete("/:id", requireAuth, deletePost);
 
 export default router;

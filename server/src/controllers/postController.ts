@@ -1,38 +1,45 @@
 import { Response } from "express";
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
+import {
+  getTrimmedString,
+  getOptionalTrimmedString,
+  getBoundedNumber,
+} from "../utils/validation";
 
 function getPostId(req: AuthRequest): string | null {
-  const { id } = req.params;
-
-  if (typeof id !== "string") {
-    return null;
-  }
-
-  const trimmedId = id.trim();
-
-  return trimmedId || null;
+  return getTrimmedString(req.params.id);
 }
 
 // GET /api/posts
 // Supports: ?feed=following | ?feed=everyone
-//
 export async function getPosts(
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    // Read the feed type from query params
-    const feedType = (req.query.feed as string)?.toLowerCase() || "following";
+    const feedQuery = getTrimmedString(req.query.feed);
+    const feedType =
+      feedQuery?.toLowerCase() === "everyone"
+        ? "everyone"
+        : "following";
 
-    // Base include that both feeds share
+    const limit = getBoundedNumber(
+      req.query.limit,
+      50,
+      1,
+      50,
+    );
+
     const include = {
       author: {
         select: {
@@ -55,7 +62,7 @@ export async function getPosts(
       },
       likes: {
         where: {
-          userId: req.userId,
+          userId,
         },
         select: {
           id: true,
@@ -66,28 +73,25 @@ export async function getPosts(
     let posts;
 
     if (feedType === "everyone") {
-      // ========== EVERYONE ==========
       posts = await prisma.post.findMany({
         orderBy: {
           createdAt: "desc",
         },
-        take: 50,
+        take: limit,
         include,
       });
     } else {
-      // ========== FOLLOWING (default) ==========
-      // Own posts + posts from users that the current user follows
       posts = await prisma.post.findMany({
         where: {
           OR: [
             {
-              authorId: req.userId, // own posts
+              authorId: userId,
             },
             {
               author: {
                 followers: {
                   some: {
-                    followerId: req.userId,
+                    followerId: userId,
                   },
                 },
               },
@@ -97,7 +101,7 @@ export async function getPosts(
         orderBy: {
           createdAt: "desc",
         },
-        take: 50,
+        take: limit,
         include,
       });
     }
@@ -133,15 +137,15 @@ export async function getPosts(
   }
 }
 
-//
 // POST /api/posts
-//
 export async function createPost(
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -156,27 +160,15 @@ export async function createPost(
       thumbnailIndex,
     } = req.body;
 
-    const files = req.files as Express.Multer.File[] | undefined;
+    const files =
+      req.files as Express.Multer.File[] | undefined;
 
-    const cleanTitle =
-      typeof title === "string" ? title.trim() : "";
-
-    const cleanContent =
-      typeof content === "string" ? content.trim() : "";
-
-    const cleanCode =
-      typeof code === "string" && code.trim()
-        ? code.trim()
-        : null;
-
+    const cleanTitle = getTrimmedString(title);
+    const cleanContent = getTrimmedString(content);
+    const cleanCode = getOptionalTrimmedString(code);
     const cleanLanguage =
-      typeof codeLanguage === "string" && codeLanguage.trim()
-        ? codeLanguage.trim()
-        : null;
+      getOptionalTrimmedString(codeLanguage);
 
-    //
-    // title validation
-    //
     if (!cleanTitle) {
       return res.status(400).json({
         success: false,
@@ -191,9 +183,6 @@ export async function createPost(
       });
     }
 
-    //
-    //content  Validation
-    //
     if (!cleanContent) {
       return res.status(400).json({
         success: false,
@@ -204,21 +193,42 @@ export async function createPost(
     if (cleanContent.length > 5000) {
       return res.status(400).json({
         success: false,
-        message: "Post content cannot exceed 5000 characters.",
+        message:
+          "Post content cannot exceed 5000 characters.",
       });
     }
 
-    //
-    // Uploaded images
-    //
+    if (cleanCode && cleanCode.length > 20000) {
+      return res.status(400).json({
+        success: false,
+        message: "Code cannot exceed 20000 characters.",
+      });
+    }
+
+    if (cleanLanguage && cleanLanguage.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Code language cannot exceed 50 characters.",
+      });
+    }
+
     const uploadedFiles = files ?? [];
 
-    //
-    // Determine thumbnail index
-    //
+    if (uploadedFiles.length > 9) {
+      return res.status(400).json({
+        success: false,
+        message: "A maximum of 9 images is allowed.",
+      });
+    }
+
     let selectedThumbnailIndex = 0;
 
-    if (thumbnailIndex !== undefined) {
+    if (
+      thumbnailIndex !== undefined &&
+      thumbnailIndex !== null &&
+      thumbnailIndex !== ""
+    ) {
       const parsedIndex = Number(thumbnailIndex);
 
       if (
@@ -235,28 +245,19 @@ export async function createPost(
       selectedThumbnailIndex = parsedIndex;
     }
 
-    //
-    // Thumbnail
-    //
     const thumbnailFile =
       uploadedFiles.length > 0
         ? uploadedFiles[selectedThumbnailIndex]
         : null;
 
-    //
-    // More images
-    //
     const additionalImages = uploadedFiles.filter(
-      (_, index) => index !== selectedThumbnailIndex
+      (_, index) => index !== selectedThumbnailIndex,
     );
 
     const thumbnailUrl = thumbnailFile
       ? `/uploads/posts/${thumbnailFile.filename}`
       : null;
 
-    //
-    // Create post
-    //
     const post = await prisma.post.create({
       data: {
         title: cleanTitle,
@@ -264,7 +265,7 @@ export async function createPost(
         thumbnail: thumbnailUrl,
         code: cleanCode,
         codeLanguage: cleanLanguage,
-        authorId: req.userId,
+        authorId: userId,
 
         images: {
           create: additionalImages.map((file) => ({
@@ -319,15 +320,15 @@ export async function createPost(
   }
 }
 
-//
 // GET /api/posts/:id
-//
 export async function getPost(
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -373,9 +374,8 @@ export async function getPost(
 
         likes: {
           where: {
-            userId: req.userId,
+            userId,
           },
-
           select: {
             id: true,
           },
@@ -397,20 +397,14 @@ export async function getPost(
         id: post.id,
         title: post.title,
         content: post.content,
-
         thumbnail: post.thumbnail,
-
         code: post.code,
         codeLanguage: post.codeLanguage,
-
         images: post.images,
-
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
-
         authorId: post.authorId,
         author: post.author,
-
         likeCount: post._count.likes,
         commentCount: post._count.comments,
         likedByCurrentUser: post.likes.length > 0,
@@ -426,17 +420,15 @@ export async function getPost(
   }
 }
 
-
-
-//
 // DELETE /api/posts/:id
-//
 export async function deletePost(
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -465,10 +457,7 @@ export async function deletePost(
       });
     }
 
-    //
-    // Only the owner can delete the post
-    //
-    if (post.authorId !== req.userId) {
+    if (post.authorId !== userId) {
       return res.status(403).json({
         success: false,
         message: "You can only delete your own posts",
@@ -501,21 +490,32 @@ export async function getMyPosts(
   res: Response,
 ): Promise<Response> {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
+    const limit = getBoundedNumber(
+      req.query.limit,
+      50,
+      1,
+      50,
+    );
+
     const posts = await prisma.post.findMany({
       where: {
-        authorId: req.userId,
+        authorId: userId,
       },
 
       orderBy: {
         createdAt: "desc",
       },
+
+      take: limit,
 
       include: {
         author: {
@@ -542,7 +542,7 @@ export async function getMyPosts(
 
         likes: {
           where: {
-            userId: req.userId,
+            userId,
           },
 
           select: {
@@ -556,23 +556,16 @@ export async function getMyPosts(
       id: post.id,
       title: post.title,
       content: post.content,
-
       thumbnail: post.thumbnail,
-
       code: post.code,
       codeLanguage: post.codeLanguage,
-
       images: post.images,
-
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
-
       authorId: post.authorId,
       author: post.author,
-
       likeCount: post._count.likes,
       commentCount: post._count.comments,
-
       likedByCurrentUser: post.likes.length > 0,
     }));
 

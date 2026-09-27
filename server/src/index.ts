@@ -3,8 +3,6 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
-import helmet from "helmet";
-
 
 import { PrismaClient } from "@prisma/client";
 
@@ -18,42 +16,58 @@ import notificationRoutes from "./routes/notificationRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
 import searchRoutes from "./routes/searchRoutes";
 import sidebarRoutes from "./routes/sidebarRoutes";
-import advertisementRoutes from "./routes/advertisementRoutes";
 
 import {
   securityHeaders,
   apiRateLimiter,
 } from "./middlewares/securityMiddleware";
-
-
+import { errorMiddleware } from "./middlewares/errorMiddleware";
 
 dotenv.config();
 
 const app = express();
+const prisma = new PrismaClient();
+
+const PORT = process.env.PORT || 5000;
+const CLIENT_URL =
+  process.env.CLIENT_URL || "http://localhost:5173";
+
+// Disable Express fingerprinting
 app.disable("x-powered-by");
 
+// Security headers
 app.use(securityHeaders);
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5000;
 
-// Middlewares
+// CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: CLIENT_URL,
     credentials: true,
-  })
+  }),
 );
 
+// Cookies
 app.use(cookieParser());
 
 // Request body limits
 app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ limit: "25mb", extended: true }));
+app.use(
+  express.urlencoded({
+    limit: "100kb",
+    extended: true,
+  }),
+);
 
 // Serve uploaded files
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-app.use("/api", apiRateLimiter)
-// Route
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads")),
+);
+
+// API rate limiting
+app.use("/api", apiRateLimiter);
+
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/posts", postRoutes);
@@ -64,8 +78,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/sidebar", sidebarRoutes);
-// app.use("/api/advertisements", advertisementRoutes);
-//
+
 // Health check
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -73,16 +86,27 @@ app.get("/api/health", (_req, res) => {
     message: "Techwitter API is running",
   });
 });
-
+app.use(errorMiddleware);
 // Graceful shutdown
-process.on("SIGINT", async () => {
-  await prisma.$disconnect();
-  process.exit(0);
+async function shutdown(signal: string) {
+  console.log(`${signal} received. Shutting down gracefully...`);
+
+  try {
+    await prisma.$disconnect();
+    console.log("Database connection closed.");
+    process.exit(0);
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+    process.exit(1);
+  }
+}
+
+process.on("SIGINT", () => {
+  void shutdown("SIGINT");
 });
 
-process.on("SIGTERM", async () => {
-  await prisma.$disconnect();
-  process.exit(0);
+process.on("SIGTERM", () => {
+  void shutdown("SIGTERM");
 });
 
 // Start server

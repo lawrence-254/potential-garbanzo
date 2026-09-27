@@ -6,11 +6,26 @@ import { Prisma } from "@prisma/client";
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 
+const isProduction = process.env.NODE_ENV === "production";
+
+const authCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? ("none" as const) : ("lax" as const),
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 export async function register(req: Request, res: Response) {
   try {
     const { username, email, password, displayName } = req.body;
 
-    if (!username || !email || !password || !displayName) {
+    if (
+      typeof username !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      typeof displayName !== "string"
+    ) {
       return res.status(400).json({
         success: false,
         message: "All required fields must be provided",
@@ -21,8 +36,15 @@ export async function register(req: Request, res: Response) {
     const normalizedUsername = username.trim().toLowerCase();
     const trimmedDisplayName = displayName.trim();
 
-    // Email format
+    if (!normalizedEmail || !normalizedUsername || !trimmedDisplayName) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+      });
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({
         success: false,
@@ -30,8 +52,10 @@ export async function register(req: Request, res: Response) {
       });
     }
 
-    // Username rules
-    if (normalizedUsername.length < 3 || normalizedUsername.length > 30) {
+    if (
+      normalizedUsername.length < 3 ||
+      normalizedUsername.length > 30
+    ) {
       return res.status(400).json({
         success: false,
         message: "Username must be between 3 and 30 characters",
@@ -41,19 +65,21 @@ export async function register(req: Request, res: Response) {
     if (!/^[a-z0-9_]+$/.test(normalizedUsername)) {
       return res.status(400).json({
         success: false,
-        message: "Username can only contain letters, numbers and underscores",
+        message:
+          "Username can only contain letters, numbers and underscores",
       });
     }
 
-    // Display name
-    if (trimmedDisplayName.length < 1 || trimmedDisplayName.length > 50) {
+    if (
+      trimmedDisplayName.length < 1 ||
+      trimmedDisplayName.length > 50
+    ) {
       return res.status(400).json({
         success: false,
         message: "Display name must be between 1 and 50 characters",
       });
     }
 
-    // Password
     if (password.length < 8) {
       return res.status(400).json({
         success: false,
@@ -61,12 +87,15 @@ export async function register(req: Request, res: Response) {
       });
     }
 
-    // Check uniqueness
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: normalizedEmail },
-          { username: normalizedUsername },
+          {
+            email: normalizedEmail,
+          },
+          {
+            username: normalizedUsername,
+          },
         ],
       },
     });
@@ -78,10 +107,8 @@ export async function register(req: Request, res: Response) {
       });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         username: normalizedUsername,
@@ -106,7 +133,6 @@ export async function register(req: Request, res: Response) {
       user,
     });
   } catch (error) {
-    // Handle unique constraint race condition
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
@@ -118,6 +144,7 @@ export async function register(req: Request, res: Response) {
     }
 
     console.error("Registration error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Something went wrong while creating your account",
@@ -129,20 +156,26 @@ export async function login(req: Request, res: Response) {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
       });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
       where: {
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
       },
     });
 
-    // Always return the same message to prevent user enumeration
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -150,7 +183,10 @@ export async function login(req: Request, res: Response) {
       });
     }
 
-    const passwordMatches = await bcrypt.compare(password, user.password);
+    const passwordMatches = await bcrypt.compare(
+      password,
+      user.password,
+    );
 
     if (!passwordMatches) {
       return res.status(401).json({
@@ -160,23 +196,28 @@ export async function login(req: Request, res: Response) {
     }
 
     const jwtSecret = process.env.JWT_SECRET;
+
     if (!jwtSecret) {
-      throw new Error("JWT_SECRET is not defined");
+      console.error("JWT_SECRET is not configured");
+
+      return res.status(500).json({
+        success: false,
+        message: "Authentication service is not configured",
+      });
     }
 
     const token = jwt.sign(
-      { userId: user.id },
+      {
+        userId: user.id,
+      },
       jwtSecret,
-      { expiresIn: "7d" },
+      {
+        expiresIn: "7d",
+        algorithm: "HS256",
+      },
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie("token", token, authCookieOptions);
 
     return res.json({
       success: true,
@@ -192,6 +233,7 @@ export async function login(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("Login error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Something went wrong while logging in",
@@ -202,8 +244,8 @@ export async function login(req: Request, res: Response) {
 export async function logout(_req: Request, res: Response) {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: isProduction,
+    sameSite: isProduction ? ("none" as const) : ("lax" as const),
     path: "/",
   });
 
@@ -213,7 +255,10 @@ export async function logout(_req: Request, res: Response) {
   });
 }
 
-export async function getCurrentUser(req: AuthRequest, res: Response) {
+export async function getCurrentUser(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
     if (!req.userId) {
       return res.status(401).json({
@@ -223,7 +268,9 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.userId },
+      where: {
+        id: req.userId,
+      },
       select: {
         id: true,
         username: true,
@@ -248,6 +295,7 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Get current user error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Unable to retrieve current user",

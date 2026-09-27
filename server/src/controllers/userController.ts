@@ -1,13 +1,24 @@
 import { Response } from "express";
+
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
+import {
+  getBoundedNumber,
+  getTrimmedString,
+  isValidUsername,
+} from "../utils/validation";
 
 //
 // GET /api/users/me
 //
-export async function getMyProfile(req: AuthRequest, res: Response) {
+export async function getMyProfile(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -15,7 +26,9 @@ export async function getMyProfile(req: AuthRequest, res: Response) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.userId },
+      where: {
+        id: userId,
+      },
       select: {
         id: true,
         username: true,
@@ -40,7 +53,7 @@ export async function getMyProfile(req: AuthRequest, res: Response) {
       });
     }
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       user: {
         id: user.id,
@@ -56,6 +69,7 @@ export async function getMyProfile(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Get profile error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Unable to retrieve profile",
@@ -66,32 +80,52 @@ export async function getMyProfile(req: AuthRequest, res: Response) {
 //
 // PATCH /api/users/me
 //
-export async function updateMyProfile(req: AuthRequest, res: Response) {
+export async function updateMyProfile(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { displayName, bio } = req.body;
+    const displayName = getTrimmedString(req.body?.displayName);
 
-    if (!displayName || typeof displayName !== "string" || !displayName.trim()) {
+    if (!displayName) {
       return res.status(400).json({
         success: false,
         message: "Display name is required",
       });
     }
 
-    if (displayName.trim().length > 50) {
+    if (displayName.length > 50) {
       return res.status(400).json({
         success: false,
         message: "Display name cannot exceed 50 characters",
       });
     }
 
-    if (bio !== undefined && typeof bio === "string" && bio.length > 160) {
+    if (
+      req.body?.bio !== undefined &&
+      typeof req.body.bio !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Bio must be a string",
+      });
+    }
+
+    const bio =
+      typeof req.body?.bio === "string"
+        ? req.body.bio.trim()
+        : "";
+
+    if (bio.length > 160) {
       return res.status(400).json({
         success: false,
         message: "Bio cannot exceed 160 characters",
@@ -99,10 +133,12 @@ export async function updateMyProfile(req: AuthRequest, res: Response) {
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: req.userId },
+      where: {
+        id: userId,
+      },
       data: {
-        displayName: displayName.trim(),
-        bio: typeof bio === "string" ? bio.trim() : "",
+        displayName,
+        bio,
       },
       select: {
         id: true,
@@ -120,7 +156,7 @@ export async function updateMyProfile(req: AuthRequest, res: Response) {
       },
     });
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       user: {
@@ -136,6 +172,7 @@ export async function updateMyProfile(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Update profile error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Unable to update profile",
@@ -146,28 +183,31 @@ export async function updateMyProfile(req: AuthRequest, res: Response) {
 //
 // GET /api/users/:username
 //
-export async function getUserProfile(req: AuthRequest, res: Response) {
+export async function getUserProfile(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const currentUserId = getTrimmedString(req.userId);
+    const username = getTrimmedString(req.params.username);
+
+    if (!currentUserId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { username } = req.params;
-
-    // Fix: narrow string | string[] → string
-    if (typeof username !== "string" || !username.trim()) {
+    if (!username || !isValidUsername(username)) {
       return res.status(400).json({
         success: false,
-        message: "Username is required",
+        message: "A valid username is required",
       });
     }
 
     const profile = await prisma.user.findUnique({
       where: {
-        username: username.trim().toLowerCase(), // matches how you store usernames
+        username: username.toLowerCase(),
       },
       select: {
         id: true,
@@ -176,25 +216,41 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
         bio: true,
         avatar: true,
         createdAt: true,
+
         _count: {
           select: {
             followers: true,
             following: true,
           },
         },
+
         followers: {
           where: {
-            followerId: req.userId,
+            followerId: currentUserId,
           },
           select: {
             id: true,
           },
+          take: 1,
         },
+
         posts: {
           orderBy: {
             createdAt: "desc",
           },
-          include: {
+          take: 50,
+
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            thumbnail: true,
+            code: true,
+            codeLanguage: true,
+            createdAt: true,
+            updatedAt: true,
+            authorId: true,
+
             author: {
               select: {
                 id: true,
@@ -203,20 +259,33 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
                 avatar: true,
               },
             },
-            images: true,
+
+            images: {
+              select: {
+                id: true,
+                url: true,
+                createdAt: true,
+              },
+              orderBy: {
+                createdAt: "asc",
+              },
+            },
+
             _count: {
               select: {
                 likes: true,
                 comments: true,
               },
             },
+
             likes: {
               where: {
-                userId: req.userId,
+                userId: currentUserId,
               },
               select: {
                 id: true,
               },
+              take: 1,
             },
           },
         },
@@ -232,7 +301,11 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
 
     const posts = profile.posts.map((post) => ({
       id: post.id,
+      title: post.title,
       content: post.content,
+      thumbnail: post.thumbnail,
+      code: post.code,
+      codeLanguage: post.codeLanguage,
       images: post.images,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
@@ -260,6 +333,7 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Get user profile error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve user profile",
@@ -270,16 +344,21 @@ export async function getUserProfile(req: AuthRequest, res: Response) {
 //
 // GET /api/users/search?q=...
 //
-export async function searchUsers(req: AuthRequest, res: Response) {
+export async function searchUsers(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const currentUserId = getTrimmedString(req.userId);
+
+    if (!currentUserId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const query = getTrimmedString(req.query.q);
 
     if (!query) {
       return res.status(200).json({
@@ -295,6 +374,13 @@ export async function searchUsers(req: AuthRequest, res: Response) {
       });
     }
 
+    const limit = getBoundedNumber(
+      req.query.limit,
+      20,
+      1,
+      20,
+    );
+
     const users = await prisma.user.findMany({
       where: {
         OR: [
@@ -306,36 +392,41 @@ export async function searchUsers(req: AuthRequest, res: Response) {
           {
             displayName: {
               contains: query,
-              // If you use PostgreSQL you can add: mode: "insensitive"
             },
           },
         ],
       },
+
       select: {
         id: true,
         username: true,
         displayName: true,
         bio: true,
         avatar: true,
+
         _count: {
           select: {
             followers: true,
             following: true,
           },
         },
+
         followers: {
           where: {
-            followerId: req.userId,
+            followerId: currentUserId,
           },
           select: {
             id: true,
           },
+          take: 1,
         },
       },
+
       orderBy: {
         username: "asc",
       },
-      take: 20,
+
+      take: limit,
     });
 
     const formattedUsers = users.map((user) => ({
@@ -355,6 +446,7 @@ export async function searchUsers(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Search users error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to search users",
@@ -362,27 +454,39 @@ export async function searchUsers(req: AuthRequest, res: Response) {
   }
 }
 
+//
+// GET /api/users/suggestions
+//
 export async function getSuggestedUsers(
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<Response> {
   try {
-    if (!req.userId) {
+    const currentUserId = getTrimmedString(req.userId);
+
+    if (!currentUserId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
+    const limit = getBoundedNumber(
+      req.query.limit,
+      5,
+      1,
+      20,
+    );
+
     const users = await prisma.user.findMany({
       where: {
         id: {
-          not: req.userId,
+          not: currentUserId,
         },
 
         followers: {
           none: {
-            followerId: req.userId,
+            followerId: currentUserId,
           },
         },
       },
@@ -398,7 +502,7 @@ export async function getSuggestedUsers(
         createdAt: "desc",
       },
 
-      take: 5,
+      take: limit,
     });
 
     return res.status(200).json({
@@ -408,7 +512,7 @@ export async function getSuggestedUsers(
   } catch (error) {
     console.error(
       "Get suggested users error:",
-      error
+      error,
     );
 
     return res.status(500).json({

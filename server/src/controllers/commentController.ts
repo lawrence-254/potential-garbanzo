@@ -3,43 +3,42 @@ import { Response } from "express";
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
 import { createNotification } from "../services/notificationService";
+import {
+  getTrimmedString,
+} from "../utils/validation";
 
-export async function createComment(req: AuthRequest, res: Response) {
+export async function createComment(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { content } = req.body;
-    const { postId } = req.params;
+    const postId = getTrimmedString(req.params.postId);
+    const content = getTrimmedString(req.body.content);
 
-    if (typeof postId !== "string" || !postId.trim()) {
+    if (!postId) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
       });
     }
 
-    if (typeof content !== "string") {
+    if (!content) {
       return res.status(400).json({
         success: false,
         message: "Comment content is required",
       });
     }
 
-    const trimmedContent = content.trim();
-
-    if (!trimmedContent) {
-      return res.status(400).json({
-        success: false,
-        message: "Comment cannot be empty",
-      });
-    }
-
-    if (trimmedContent.length > 500) {
+    if (content.length > 500) {
       return res.status(400).json({
         success: false,
         message: "Comment cannot exceed 500 characters",
@@ -47,7 +46,13 @@ export async function createComment(req: AuthRequest, res: Response) {
     }
 
     const post = await prisma.post.findUnique({
-      where: { id: postId },
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        authorId: true,
+      },
     });
 
     if (!post) {
@@ -59,8 +64,8 @@ export async function createComment(req: AuthRequest, res: Response) {
 
     const comment = await prisma.comment.create({
       data: {
-        content: trimmedContent,
-        authorId: req.userId,
+        content,
+        authorId: userId,
         postId,
       },
       include: {
@@ -75,16 +80,19 @@ export async function createComment(req: AuthRequest, res: Response) {
       },
     });
 
-    // Don't notify the user when they comment on their own post
-    if (post.authorId !== req.userId) {
+    // Don't notify the user when they comment on their own post.
+    if (post.authorId !== userId) {
       createNotification({
         type: "COMMENT",
         recipientId: post.authorId,
-        actorId: req.userId,
+        actorId: userId,
         message: "commented on your post",
         postId,
-      }).catch((err) => {
-        console.error("Failed to create comment notification:", err);
+      }).catch((error) => {
+        console.error(
+          "Failed to create comment notification:",
+          error,
+        );
       });
     }
 
@@ -94,6 +102,7 @@ export async function createComment(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Create comment error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to create comment",
@@ -101,18 +110,23 @@ export async function createComment(req: AuthRequest, res: Response) {
   }
 }
 
-export async function getComments(req: AuthRequest, res: Response) {
+export async function getComments(
+  req: AuthRequest,
+  res: Response,
+) {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { postId } = req.params;
+    const postId = getTrimmedString(req.params.postId);
 
-    if (typeof postId !== "string" || !postId.trim()) {
+    if (!postId) {
       return res.status(400).json({
         success: false,
         message: "Post ID is required",
@@ -120,7 +134,12 @@ export async function getComments(req: AuthRequest, res: Response) {
     }
 
     const post = await prisma.post.findUnique({
-      where: { id: postId },
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+      },
     });
 
     if (!post) {
@@ -130,22 +149,35 @@ export async function getComments(req: AuthRequest, res: Response) {
       });
     }
 
-    const comments = await prisma.comment.findMany({
-      where: { postId },
-      orderBy: {
-        createdAt: "asc",
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
+    const limitValue = Number(req.query.limit);
+
+    const limit = Number.isFinite(limitValue)
+      ? Math.min(
+          Math.max(Math.floor(limitValue), 1),
+          100,
+        )
+      : 50;
+
+    const comments =
+      await prisma.comment.findMany({
+        where: {
+          postId,
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+        take: limit,
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+            },
           },
         },
-      },
-    });
+      });
 
     return res.status(200).json({
       success: true,
@@ -153,6 +185,7 @@ export async function getComments(req: AuthRequest, res: Response) {
     });
   } catch (error) {
     console.error("Get comments error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve comments",
@@ -162,28 +195,37 @@ export async function getComments(req: AuthRequest, res: Response) {
 
 export async function deleteComment(
   req: AuthRequest,
-  res: Response
+  res: Response,
 ) {
   try {
-    if (!req.userId) {
+    const userId = getTrimmedString(req.userId);
+
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
       });
     }
 
-    const { id } = req.params;
+    const id = getTrimmedString(req.params.id);
 
-    if (typeof id !== "string" || !id.trim()) {
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: "Comment ID is required",
       });
     }
 
-    const comment = await prisma.comment.findUnique({
-      where: { id },
-    });
+    const comment =
+      await prisma.comment.findUnique({
+        where: {
+          id,
+        },
+        select: {
+          id: true,
+          authorId: true,
+        },
+      });
 
     if (!comment) {
       return res.status(404).json({
@@ -192,15 +234,18 @@ export async function deleteComment(
       });
     }
 
-    if (comment.authorId !== req.userId) {
+    if (comment.authorId !== userId) {
       return res.status(403).json({
         success: false,
-        message: "You can only delete your own comments",
+        message:
+          "You can only delete your own comments",
       });
     }
 
     await prisma.comment.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     return res.status(200).json({

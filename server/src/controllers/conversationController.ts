@@ -1,6 +1,11 @@
 import { Response } from "express";
+
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middlewares/authMiddleware";
+import {
+  getBoundedNumber,
+  getTrimmedString,
+} from "../utils/validation";
 
 const userSelect = {
   id: true,
@@ -21,8 +26,12 @@ const messageSelect = {
 const MAX_MESSAGE_LENGTH = 2000;
 const DEFAULT_MESSAGE_LIMIT = 50;
 const MAX_MESSAGE_LIMIT = 100;
+const MAX_CONVERSATION_LIMIT = 100;
 
-function getOrderedUserIds(firstUserId: string, secondUserId: string) {
+function getOrderedUserIds(
+  firstUserId: string,
+  secondUserId: string,
+) {
   return firstUserId < secondUserId
     ? {
         userOneId: firstUserId,
@@ -69,7 +78,7 @@ export async function getConversations(
   res: Response,
 ) {
   try {
-    const userId = req.userId;
+    const userId = getTrimmedString(req.userId);
 
     if (!userId) {
       return res.status(401).json({
@@ -78,49 +87,58 @@ export async function getConversations(
       });
     }
 
-    const conversations = await prisma.conversation.findMany({
-      where: {
-        OR: [
-          { userOneId: userId },
-          { userTwoId: userId },
-        ],
-      },
+    const limit = getBoundedNumber(
+      req.query.limit,
+      MAX_CONVERSATION_LIMIT,
+      1,
+      MAX_CONVERSATION_LIMIT,
+    );
 
-      orderBy: {
-        updatedAt: "desc",
-      },
-
-      select: {
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-
-        userOneId: true,
-        userTwoId: true,
-
-        userOne: {
-          select: userSelect,
+    const conversations =
+      await prisma.conversation.findMany({
+        where: {
+          OR: [
+            { userOneId: userId },
+            { userTwoId: userId },
+          ],
         },
 
-        userTwo: {
-          select: userSelect,
+        orderBy: {
+          updatedAt: "desc",
         },
 
-        messages: {
-          orderBy: {
-            createdAt: "desc",
+        take: limit,
+
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          userOneId: true,
+          userTwoId: true,
+
+          userOne: {
+            select: userSelect,
           },
-          take: 1,
-          select: messageSelect,
-        },
 
-        _count: {
-          select: {
-            messages: true,
+          userTwo: {
+            select: userSelect,
+          },
+
+          messages: {
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+            select: messageSelect,
+          },
+
+          _count: {
+            select: {
+              messages: true,
+            },
           },
         },
-      },
-    });
+      });
 
     if (conversations.length === 0) {
       return res.status(200).json({
@@ -129,21 +147,21 @@ export async function getConversations(
       });
     }
 
-    /*
-     * Fetch all unread counts in ONE query instead of
-     * running one count query for every conversation.
-     */
+    const conversationIds = conversations.map(
+      (conversation) => conversation.id,
+    );
+
     const unreadCounts = await prisma.message.groupBy({
       by: ["conversationId"],
+
       where: {
         conversationId: {
-          in: conversations.map(
-            (conversation) => conversation.id,
-          ),
+          in: conversationIds,
         },
         receiverId: userId,
         read: false,
       },
+
       _count: {
         _all: true,
       },
@@ -156,8 +174,8 @@ export async function getConversations(
       ]),
     );
 
-    const formattedConversations = conversations.map(
-      (conversation) => {
+    const formattedConversations =
+      conversations.map((conversation) => {
         const otherUser = getOtherUser(
           conversation,
           userId,
@@ -174,8 +192,7 @@ export async function getConversations(
           unreadCount:
             unreadCountMap.get(conversation.id) ?? 0,
         };
-      },
-    );
+      });
 
     return res.status(200).json({
       success: true,
@@ -193,16 +210,16 @@ export async function getConversations(
 
 /**
  * POST /api/conversations
- *
- * Creates a conversation if it doesn't already exist.
- * Returns the existing conversation when one is already present.
  */
 export async function createConversation(
   req: AuthRequest,
   res: Response,
 ) {
   try {
-    const userId = req.userId;
+    const userId = getTrimmedString(req.userId);
+    const targetUserId = getTrimmedString(
+      req.body?.userId,
+    );
 
     if (!userId) {
       return res.status(401).json({
@@ -211,30 +228,24 @@ export async function createConversation(
       });
     }
 
-    const { userId: targetUserId } = req.body;
-
-    if (
-      typeof targetUserId !== "string" ||
-      !targetUserId.trim()
-    ) {
+    if (!targetUserId) {
       return res.status(400).json({
         success: false,
         message: "A user ID is required",
       });
     }
 
-    const normalizedTargetUserId = targetUserId.trim();
-
-    if (normalizedTargetUserId === userId) {
+    if (targetUserId === userId) {
       return res.status(400).json({
         success: false,
-        message: "You cannot start a conversation with yourself",
+        message:
+          "You cannot start a conversation with yourself",
       });
     }
 
     const targetUser = await prisma.user.findUnique({
       where: {
-        id: normalizedTargetUserId,
+        id: targetUserId,
       },
       select: userSelect,
     });
@@ -251,7 +262,7 @@ export async function createConversation(
       userTwoId,
     } = getOrderedUserIds(
       userId,
-      normalizedTargetUserId,
+      targetUserId,
     );
 
     const conversation =
@@ -274,7 +285,6 @@ export async function createConversation(
           id: true,
           createdAt: true,
           updatedAt: true,
-
           userOneId: true,
           userTwoId: true,
 
@@ -303,7 +313,10 @@ export async function createConversation(
       },
     });
   } catch (error) {
-    console.error("Create conversation error:", error);
+    console.error(
+      "Create conversation error:",
+      error,
+    );
 
     return res.status(500).json({
       success: false,
@@ -320,7 +333,10 @@ export async function getConversationMessages(
   res: Response,
 ) {
   try {
-    const userId = req.userId;
+    const userId = getTrimmedString(req.userId);
+    const conversationId = getTrimmedString(
+      req.params.id,
+    );
 
     if (!userId) {
       return res.status(401).json({
@@ -329,12 +345,7 @@ export async function getConversationMessages(
       });
     }
 
-    const conversationId = req.params.id;
-
-    if (
-      typeof conversationId !== "string" ||
-      !conversationId.trim()
-    ) {
+    if (!conversationId) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID is required",
@@ -346,6 +357,7 @@ export async function getConversationMessages(
         where: {
           id: conversationId,
         },
+
         select: {
           id: true,
           userOneId: true,
@@ -373,36 +385,33 @@ export async function getConversationMessages(
       });
     }
 
-    const page = Math.max(
-      Number(req.query.page) || 1,
+    const page = getBoundedNumber(
+      req.query.page,
       1,
+      1,
+      1000,
     );
 
-    const limit = Math.min(
-      Math.max(
-        Number(req.query.limit) ||
-          DEFAULT_MESSAGE_LIMIT,
-        1,
-      ),
+    const limit = getBoundedNumber(
+      req.query.limit,
+      DEFAULT_MESSAGE_LIMIT,
+      1,
       MAX_MESSAGE_LIMIT,
     );
 
     const skip = (page - 1) * limit;
 
-    /*
-     * Fetch newest messages first for efficient pagination.
-     * Reverse them before returning so the UI receives
-     * chronological order.
-     */
     const [messages, totalMessages] =
       await Promise.all([
         prisma.message.findMany({
           where: {
             conversationId,
           },
+
           orderBy: {
             createdAt: "desc",
           },
+
           skip,
           take: limit,
 
@@ -425,7 +434,9 @@ export async function getConversationMessages(
     const chronologicalMessages =
       messages.reverse();
 
-    const hasMore = skip + messages.length < totalMessages;
+    const hasMore =
+      skip + chronologicalMessages.length <
+      totalMessages;
 
     return res.status(200).json({
       success: true,
@@ -456,7 +467,14 @@ export async function sendMessage(
   res: Response,
 ) {
   try {
-    const userId = req.userId;
+    const userId = getTrimmedString(req.userId);
+    const conversationId = getTrimmedString(
+      req.params.id,
+    );
+    const content =
+      typeof req.body?.content === "string"
+        ? req.body.content.trim()
+        : null;
 
     if (!userId) {
       return res.status(401).json({
@@ -465,37 +483,21 @@ export async function sendMessage(
       });
     }
 
-    const conversationId = req.params.id;
-
-    if (
-      typeof conversationId !== "string" ||
-      !conversationId.trim()
-    ) {
+    if (!conversationId) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID is required",
       });
     }
 
-    const { content } = req.body;
-
-    if (typeof content !== "string") {
+    if (!content) {
       return res.status(400).json({
         success: false,
         message: "Message content is required",
       });
     }
 
-    const trimmedContent = content.trim();
-
-    if (!trimmedContent) {
-      return res.status(400).json({
-        success: false,
-        message: "Message cannot be empty",
-      });
-    }
-
-    if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+    if (content.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({
         success: false,
         message: `Message cannot exceed ${MAX_MESSAGE_LENGTH} characters`,
@@ -507,6 +509,7 @@ export async function sendMessage(
         where: {
           id: conversationId,
         },
+
         select: {
           id: true,
           userOneId: true,
@@ -539,16 +542,12 @@ export async function sendMessage(
         ? conversation.userTwoId
         : conversation.userOneId;
 
-    /*
-     * Message creation and conversation activity
-     * update happen in the same transaction.
-     */
     const message = await prisma.$transaction(
       async (tx) => {
         const createdMessage =
           await tx.message.create({
             data: {
-              content: trimmedContent,
+              content,
               conversationId,
               senderId: userId,
               receiverId,
@@ -567,6 +566,7 @@ export async function sendMessage(
           where: {
             id: conversationId,
           },
+
           data: {
             updatedAt: new Date(),
           },
@@ -598,7 +598,10 @@ export async function markMessagesAsRead(
   res: Response,
 ) {
   try {
-    const userId = req.userId;
+    const userId = getTrimmedString(req.userId);
+    const conversationId = getTrimmedString(
+      req.params.id,
+    );
 
     if (!userId) {
       return res.status(401).json({
@@ -607,12 +610,7 @@ export async function markMessagesAsRead(
       });
     }
 
-    const conversationId = req.params.id;
-
-    if (
-      typeof conversationId !== "string" ||
-      !conversationId.trim()
-    ) {
+    if (!conversationId) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID is required",
@@ -624,6 +622,7 @@ export async function markMessagesAsRead(
         where: {
           id: conversationId,
         },
+
         select: {
           id: true,
           userOneId: true,
@@ -658,6 +657,7 @@ export async function markMessagesAsRead(
           receiverId: userId,
           read: false,
         },
+
         data: {
           read: true,
         },

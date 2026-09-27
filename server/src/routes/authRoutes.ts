@@ -6,12 +6,12 @@ import {
   logout,
 } from "../controllers/authController";
 import { requireAuth } from "../middlewares/authMiddleware";
+import { authRateLimiter } from "../middlewares/securityMiddleware";
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", authRateLimiter,register);
+router.post("/login", authRateLimiter, login);
 router.post("/logout", logout);
-router.get("/me", requireAuth, getCurrentUser);
 
 export default router;

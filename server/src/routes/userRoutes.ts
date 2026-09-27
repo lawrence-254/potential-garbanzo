@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getMyProfile,
   updateMyProfile,
+  getSuggestedUsers,
   getUserProfile,
   searchUsers,
 } from "../controllers/userController";
@@ -15,9 +16,9 @@ router.patch("/me", requireAuth, updateMyProfile);
 
 // Search users
 router.get("/search", requireAuth, searchUsers);
+router.get("/suggestions", requireAuth, getSuggestedUsers);
 
 // Get another user's profile by username
-// Important: this must come after /me and /search
 router.get("/:username", requireAuth, getUserProfile);
 
 export default router;

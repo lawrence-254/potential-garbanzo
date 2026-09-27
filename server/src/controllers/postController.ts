@@ -494,3 +494,98 @@ export async function deletePost(
     });
   }
 }
+
+// GET /api/posts/me
+export async function getMyPosts(
+  req: AuthRequest,
+  res: Response,
+): Promise<Response> {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const posts = await prisma.post.findMany({
+      where: {
+        authorId: req.userId,
+      },
+
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatar: true,
+          },
+        },
+
+        images: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+          },
+        },
+
+        likes: {
+          where: {
+            userId: req.userId,
+          },
+
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    const formattedPosts = posts.map((post) => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+
+      thumbnail: post.thumbnail,
+
+      code: post.code,
+      codeLanguage: post.codeLanguage,
+
+      images: post.images,
+
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+
+      authorId: post.authorId,
+      author: post.author,
+
+      likeCount: post._count.likes,
+      commentCount: post._count.comments,
+
+      likedByCurrentUser: post.likes.length > 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      posts: formattedPosts,
+    });
+  } catch (error) {
+    console.error("Get my posts error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve your posts",
+    });
+  }
+}

@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
+import helmet from "helmet";
+
 
 import { PrismaClient } from "@prisma/client";
 
@@ -15,10 +17,22 @@ import followRoutes from "./routes/followRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
 import searchRoutes from "./routes/searchRoutes";
+import sidebarRoutes from "./routes/sidebarRoutes";
+import advertisementRoutes from "./routes/advertisementRoutes";
+
+import {
+  securityHeaders,
+  apiRateLimiter,
+} from "./middlewares/securityMiddleware";
+
+
 
 dotenv.config();
 
 const app = express();
+app.disable("x-powered-by");
+
+app.use(securityHeaders);
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
@@ -33,12 +47,12 @@ app.use(
 app.use(cookieParser());
 
 // Request body limits
-app.use(express.json({ limit: "25mb" }));
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ limit: "25mb", extended: true }));
 
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
+app.use("/api", apiRateLimiter)
 // Route
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -49,7 +63,9 @@ app.use("/api/follows", followRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/search", searchRoutes);
-
+app.use("/api/sidebar", sidebarRoutes);
+// app.use("/api/advertisements", advertisementRoutes);
+//
 // Health check
 app.get("/api/health", (_req, res) => {
   res.json({

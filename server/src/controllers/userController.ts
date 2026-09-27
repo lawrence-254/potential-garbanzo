@@ -361,3 +361,59 @@ export async function searchUsers(req: AuthRequest, res: Response) {
     });
   }
 }
+
+export async function getSuggestedUsers(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const users = await prisma.user.findMany({
+      where: {
+        id: {
+          not: req.userId,
+        },
+
+        followers: {
+          none: {
+            followerId: req.userId,
+          },
+        },
+      },
+
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatar: true,
+      },
+
+      orderBy: {
+        createdAt: "desc",
+      },
+
+      take: 5,
+    });
+
+    return res.status(200).json({
+      success: true,
+      users,
+    });
+  } catch (error) {
+    console.error(
+      "Get suggested users error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve suggested users",
+    });
+  }
+}

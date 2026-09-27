@@ -4,7 +4,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import { useAuth } from "../../../context/authContext/authContext";
 import { logoutUser } from "../../../services/api/authApi";
@@ -15,21 +15,16 @@ import UserSearch from "../../../components/search/UserSearch/UserSearch";
 import "./Navbar.css";
 import NotificationPanel from "../../notifications/NotificationPanel/NotificationPanel";
 
+import logo from "../../../../assets/layer-solid-green-background.png";
+
 export default function Navbar() {
-  const [showNotifications, setShowNotifications] =
-    useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const navigate = useNavigate();
-
   const { user, clearUser } = useAuth();
 
-  const {
-    unreadCount: notificationUnreadCount,
-  } = useNotifications();
-
-  const {
-    unreadCount: messageUnreadCount,
-  } = useMessages();
+  const { unreadCount: notificationUnreadCount } = useNotifications();
+  const { unreadCount: messageUnreadCount } = useMessages();
 
   const handleLogout = async () => {
     try {
@@ -46,15 +41,13 @@ export default function Navbar() {
       <div className="navbar__inner">
 
         {/* Logo */}
-        <a href="/" className="navbar__logo">
-          <span className="navbar__logo-mark">
-            T
-          </span>
-
-          <span className="navbar__logo-text">
-            TechWitter
-          </span>
-        </a>
+        <Link to="/" className="navbar__logo">
+          <img
+            src={logo}
+            alt="Techwitter"
+            className="navbar__logo-img"
+          />
+        </Link>
 
         {/* User Search */}
         <div className="navbar__search">
@@ -63,16 +56,13 @@ export default function Navbar() {
 
         {/* Actions */}
         <div className="navbar__actions">
-
           {/* Notifications */}
           <div className="navbar__notification">
             <button
               type="button"
               className="navbar__icon-button"
               onClick={() =>
-                setShowNotifications(
-                  (current) => !current,
-                )
+                setShowNotifications((current) => !current)
               }
               aria-label={`Notifications${
                 notificationUnreadCount > 0
@@ -82,7 +72,6 @@ export default function Navbar() {
               aria-expanded={showNotifications}
             >
               <Bell size={20} />
-
               {notificationUnreadCount > 0 && (
                 <span className="navbar__notification-badge">
                   {notificationUnreadCount > 99
@@ -94,9 +83,7 @@ export default function Navbar() {
 
             {showNotifications && (
               <NotificationPanel
-                onClose={() =>
-                  setShowNotifications(false)
-                }
+                onClose={() => setShowNotifications(false)}
               />
             )}
           </div>
@@ -113,7 +100,6 @@ export default function Navbar() {
             }`}
           >
             <Mail size={20} />
-
             {messageUnreadCount > 0 && (
               <span className="navbar__message-badge">
                 {messageUnreadCount > 99
@@ -133,9 +119,7 @@ export default function Navbar() {
               navigate("/profile");
             }}
           >
-            {user?.displayName
-              ?.charAt(0)
-              .toUpperCase() || "U"}
+            {user?.displayName?.charAt(0).toUpperCase() || "U"}
           </button>
 
           {/* Logout */}
@@ -147,7 +131,6 @@ export default function Navbar() {
           >
             <LogOut size={20} />
           </button>
-
         </div>
       </div>
     </header>

@@ -174,3 +174,27 @@ model Message {
   @@index([receiverId])
   @@index([conversationId, createdAt])
 }
+
+model Advertisement {
+  id          String   @id @default(cuid())
+
+  advertiser  String
+  title       String
+  description String?
+  imageUrl    String?
+  targetUrl   String
+  ctaText     String   @default("Learn more")
+
+  isActive    Boolean  @default(true)
+  startAt     DateTime?
+  endAt       DateTime?
+
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([startAt, endAt])
+}

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createPost,
+  getMyPosts,
   getPost,
   getPosts,
   deletePost,
@@ -10,6 +11,7 @@ import { postUpload } from "../middlewares/postUpload";
 
 const router = Router();
 
+router.get("/me", requireAuth, getMyPosts);
 router.get("/", requireAuth, getPosts);
 router.get("/:id", requireAuth, getPost);
 router.post(

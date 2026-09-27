@@ -19,6 +19,25 @@ interface DeletePostResponse {
   success: boolean;
   message: string;
 }
+interface PostsResponse {
+  success: boolean;
+  posts: Post[];
+}
+
+export async function getMyPosts(): Promise<Post[]> {
+  const response = await apiRequest<PostsResponse>(
+    "/posts?feed=everyone",
+  );
+
+  return response.posts;
+}
+export async function getMyOwnPosts(): Promise<Post[]> {
+  const response = await apiRequest<PostsResponse>(
+    "/posts/me",
+  );
+
+  return response.posts;
+}
 //
 // GET /api/posts?feed=following | everyone
 //

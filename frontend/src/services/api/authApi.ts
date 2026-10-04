@@ -60,7 +60,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
   const response = await apiRequest<{
     success: boolean;
     user: AuthUser;
-  }>("/auth/me");
+  }>("/users/me");
 
   return response.user;
 }

@@ -1,5 +1,5 @@
 import {
-  Bookmark,
+  // Bookmark,
   Home,
   MessageCircle,
   Settings,
@@ -39,7 +39,7 @@ export default function Sidebar() {
             <span>Messages</span>
           </NavLink>
 
-          <NavLink
+          {/*<NavLink
             to="/bookmarks"
             className={({ isActive }) =>
               `sidebar__link ${isActive ? "sidebar__link--active" : ""}`
@@ -47,7 +47,7 @@ export default function Sidebar() {
           >
             <Bookmark size={21}/>
             <span>Bookmarks</span>
-          </NavLink>
+          </NavLink>*/}
 
           <NavLink
             to="/profile"
@@ -69,10 +69,10 @@ export default function Sidebar() {
 
           <ThemeToggle />
 
-          <button className="sidebar__settings" type="button">
+          {/*<button className="sidebar__settings" type="button">
             <Settings size={21}/>
             <span>Settings</span>
-          </button>
+          </button>*/}
         </div>
       </div>
     </nav>

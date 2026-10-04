@@ -316,7 +316,7 @@ export default function RightSidebar() {
 
       </section>
 
-      <section className="right-sidebar__section">
+      {/*<section className="right-sidebar__section">
         <h2 className="right-sidebar__title">
           Trending
         </h2>
@@ -362,7 +362,7 @@ export default function RightSidebar() {
               </strong>
             </button>
           ))}
-      </section>
+      </section>*/}
       <section className="right-sidebar__section right-sidebar__advertisements">
         <h2 className="right-sidebar__title">Sponsored</h2>
 

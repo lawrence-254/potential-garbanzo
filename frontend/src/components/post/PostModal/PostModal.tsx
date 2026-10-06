@@ -6,7 +6,14 @@ import {
   type FormEvent,
 } from "react";
 
-import { ImagePlus, X, Code2, Trash2 } from "lucide-react";
+import {
+  ImagePlus,
+  X,
+  Code2,
+  Trash2,
+  Plus,
+} from "lucide-react";
+
 import { apiRequest } from "../../../services/api/api";
 
 import "./PostModal.css";
@@ -22,36 +29,58 @@ interface PreviewImage {
   url: string;
 }
 
+interface PostDraft {
+  id: string;
+  title: string;
+  content: string;
+  thumbnail: PreviewImage | null;
+  images: PreviewImage[];
+  code: string;
+  codeLanguage: string;
+  showCode: boolean;
+}
+
+interface CreatedPostResponse {
+  success?: boolean;
+  post?: {
+    id?: string;
+  };
+}
+
 const MAX_CONTENT_LENGTH = 5000;
 const MAX_IMAGES = 8;
+const MAX_THREAD_POSTS = 10;
+
+const createDraft = (): PostDraft => ({
+  id: crypto.randomUUID(),
+  title: "",
+  content: "",
+  thumbnail: null,
+  images: [],
+  code: "",
+  codeLanguage: "javascript",
+  showCode: false,
+});
 
 export default function PostModal({
   isOpen,
   onClose,
   onPostCreated,
 }: PostModalProps) {
-  const [content, setContent] = useState("");
+  const [drafts, setDrafts] = useState<PostDraft[]>([
+    createDraft(),
+  ]);
 
-  const [thumbnail, setThumbnail] =
-    useState<PreviewImage | null>(null);
-
-  const [images, setImages] = useState<
-    PreviewImage[]
-  >([]);
-const [title, setTitle] = useState("");
-  const [code, setCode] = useState("");
-  const [codeLanguage, setCodeLanguage] =
-    useState("javascript");
-
-  const [showCode, setShowCode] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
 
-  const thumbnailInputRef =
-    useRef<HTMLInputElement | null>(null);
+  const thumbnailInputRefs = useRef<
+    Record<string, HTMLInputElement | null>
+  >({});
 
-  const imagesInputRef =
-    useRef<HTMLInputElement | null>(null);
+  const imagesInputRefs = useRef<
+    Record<string, HTMLInputElement | null>
+  >({});
 
   useEffect(() => {
     if (!isOpen) {
@@ -93,21 +122,43 @@ const [title, setTitle] = useState("");
 
   useEffect(() => {
     return () => {
-      if (thumbnail) {
-        URL.revokeObjectURL(thumbnail.url);
-      }
+      drafts.forEach((draft) => {
+        if (draft.thumbnail) {
+          URL.revokeObjectURL(draft.thumbnail.url);
+        }
 
-      images.forEach((image) => {
-        URL.revokeObjectURL(image.url);
+        draft.images.forEach((image) => {
+          URL.revokeObjectURL(image.url);
+        });
       });
     };
-  }, [thumbnail, images]);
+  }, [drafts]);
 
   if (!isOpen) {
     return null;
   }
 
+  const updateDraft = (
+    draftId: string,
+    updates: Partial<PostDraft>,
+  ) => {
+    setDrafts((current) =>
+      current.map((draft) =>
+        draft.id === draftId
+          ? {
+              ...draft,
+              ...updates,
+            }
+          : draft,
+      ),
+    );
+  };
+
+  const getDraft = (draftId: string) =>
+    drafts.find((draft) => draft.id === draftId);
+
   const handleThumbnailChange = (
+    draftId: string,
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
@@ -118,22 +169,33 @@ const [title, setTitle] = useState("");
 
     if (!file.type.startsWith("image/")) {
       setError("Thumbnail must be an image.");
+      event.target.value = "";
       return;
     }
 
-    if (thumbnail) {
-      URL.revokeObjectURL(thumbnail.url);
+    const draft = getDraft(draftId);
+
+    if (!draft) {
+      return;
     }
 
-    setThumbnail({
-      file,
-      url: URL.createObjectURL(file),
+    if (draft.thumbnail) {
+      URL.revokeObjectURL(draft.thumbnail.url);
+    }
+
+    updateDraft(draftId, {
+      thumbnail: {
+        file,
+        url: URL.createObjectURL(file),
+      },
     });
 
     setError("");
+    event.target.value = "";
   };
 
   const handleImagesChange = (
+    draftId: string,
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const selectedFiles = Array.from(
@@ -144,8 +206,14 @@ const [title, setTitle] = useState("");
       file.type.startsWith("image/"),
     );
 
+    const draft = getDraft(draftId);
+
+    if (!draft) {
+      return;
+    }
+
     const remainingSlots =
-      MAX_IMAGES - images.length;
+      MAX_IMAGES - draft.images.length;
 
     const filesToAdd = imageFiles.slice(
       0,
@@ -157,14 +225,16 @@ const [title, setTitle] = useState("");
       url: URL.createObjectURL(file),
     }));
 
-    setImages((current) => [
-      ...current,
-      ...newImages,
-    ]);
+    updateDraft(draftId, {
+      images: [
+        ...draft.images,
+        ...newImages,
+      ],
+    });
 
     if (imageFiles.length > remainingSlots) {
       setError(
-        `You can add a maximum of ${MAX_IMAGES} additional pictures.`,
+        `You can add a maximum of ${MAX_IMAGES} additional pictures per post.`,
       );
     } else {
       setError("");
@@ -173,43 +243,218 @@ const [title, setTitle] = useState("");
     event.target.value = "";
   };
 
-  const removeThumbnail = () => {
-    if (thumbnail) {
-      URL.revokeObjectURL(thumbnail.url);
+  const removeThumbnail = (draftId: string) => {
+    const draft = getDraft(draftId);
+
+    if (!draft?.thumbnail) {
+      return;
     }
 
-    setThumbnail(null);
-  };
+    URL.revokeObjectURL(draft.thumbnail.url);
 
-  const removeImage = (index: number) => {
-    setImages((current) => {
-      const image = current[index];
-
-      if (image) {
-        URL.revokeObjectURL(image.url);
-      }
-
-      return current.filter(
-        (_, imageIndex) => imageIndex !== index,
-      );
+    updateDraft(draftId, {
+      thumbnail: null,
     });
   };
 
+  const removeImage = (
+    draftId: string,
+    index: number,
+  ) => {
+    const draft = getDraft(draftId);
+
+    if (!draft) {
+      return;
+    }
+
+    const image = draft.images[index];
+
+    if (image) {
+      URL.revokeObjectURL(image.url);
+    }
+
+    updateDraft(draftId, {
+      images: draft.images.filter(
+        (_, imageIndex) => imageIndex !== index,
+      ),
+    });
+  };
+
+  const addPostToThread = () => {
+    if (drafts.length >= MAX_THREAD_POSTS) {
+      setError(
+        `A thread can contain a maximum of ${MAX_THREAD_POSTS} posts.`,
+      );
+      return;
+    }
+
+    setDrafts((current) => [
+      ...current,
+      createDraft(),
+    ]);
+
+    setError("");
+  };
+
+  const removePostFromThread = (
+    draftId: string,
+  ) => {
+    if (drafts.length === 1) {
+      return;
+    }
+
+    const draft = getDraft(draftId);
+
+    if (draft) {
+      if (draft.thumbnail) {
+        URL.revokeObjectURL(draft.thumbnail.url);
+      }
+
+      draft.images.forEach((image) => {
+        URL.revokeObjectURL(image.url);
+      });
+    }
+
+    setDrafts((current) =>
+      current.filter(
+        (item) => item.id !== draftId,
+      ),
+    );
+
+    setError("");
+  };
+
+  const validateDrafts = (): boolean => {
+    for (let index = 0; index < drafts.length; index += 1) {
+      const draft = drafts[index];
+
+      if (!draft.title.trim()) {
+        setError(
+          `Please add a title to post ${index + 1}.`,
+        );
+        return false;
+      }
+
+      if (draft.title.trim().length > 200) {
+        setError(
+          `The title for post ${index + 1} cannot exceed 200 characters.`,
+        );
+        return false;
+      }
+
+      if (!draft.content.trim()) {
+        setError(
+          `Please add content to post ${index + 1}.`,
+        );
+        return false;
+      }
+
+      if (
+        draft.content.trim().length >
+        MAX_CONTENT_LENGTH
+      ) {
+        setError(
+          `The content for post ${index + 1} cannot exceed ${MAX_CONTENT_LENGTH} characters.`,
+        );
+        return false;
+      }
+
+      if (draft.code.trim().length > 20000) {
+        setError(
+          `The code for post ${index + 1} cannot exceed 20000 characters.`,
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const createSinglePost = async (
+    draft: PostDraft,
+    previousPostId?: string,
+  ): Promise<string> => {
+    const formData = new FormData();
+
+    formData.append(
+      "title",
+      draft.title.trim(),
+    );
+
+    formData.append(
+      "content",
+      draft.content.trim(),
+    );
+
+    if (draft.code.trim()) {
+      formData.append(
+        "code",
+        draft.code.trim(),
+      );
+    }
+
+    if (draft.codeLanguage) {
+      formData.append(
+        "codeLanguage",
+        draft.codeLanguage,
+      );
+    }
+
+    const allImages: File[] = [];
+
+    if (draft.thumbnail?.file) {
+      allImages.push(draft.thumbnail.file);
+    }
+
+    draft.images.forEach((image) => {
+      allImages.push(image.file);
+    });
+
+    allImages.forEach((file) => {
+      formData.append("images", file);
+    });
+
+    if (draft.thumbnail) {
+      formData.append(
+        "thumbnailIndex",
+        "0",
+      );
+    }
+
+    if (previousPostId) {
+      formData.append(
+        "previousPostId",
+        previousPostId,
+      );
+    }
+
+    const response =
+      (await apiRequest("/posts", {
+        method: "POST",
+        body: formData,
+      })) as CreatedPostResponse;
+
+    const createdPostId = response.post?.id;
+
+    if (!createdPostId) {
+      throw new Error(
+        "The server did not return the created post.",
+      );
+    }
+
+    return createdPostId;
+  };
+
   const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
+    event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
 
     if (posting) {
       return;
     }
-    if (!title.trim()) {
-      setError("Please add a title.");
-      return;
-    }
 
-    if (!content.trim()) {
-      setError("Please add some content.");
+    if (!validateDrafts()) {
       return;
     }
 
@@ -217,55 +462,14 @@ const [title, setTitle] = useState("");
       setPosting(true);
       setError("");
 
-      const formData = new FormData();
-      formData.append(
-        "title",
-        title.trim()
-      );
-      formData.append(
-        "content",
-        content.trim()
-      );
+      let previousPostId: string | undefined;
 
-      if (code.trim()) {
-        formData.append(
-          "code",
-          code.trim()
+      for (const draft of drafts) {
+        previousPostId = await createSinglePost(
+          draft,
+          previousPostId,
         );
       }
-
-      if (codeLanguage) {
-        formData.append(
-          "codeLanguage",
-          codeLanguage
-        );
-      }
-
-      const allImages: File[] = [];
-
-      if (thumbnail?.file) {
-        allImages.push(thumbnail.file);
-      }
-
-      images.forEach((image) => {
-        allImages.push(image.file);
-      });
-
-      allImages.forEach((file) => {
-        formData.append("images", file);
-      });
-
-      if (thumbnail) {
-        formData.append(
-          "thumbnailIndex",
-          "0"
-        );
-      }
-
-      await apiRequest("/posts", {
-        method: "POST",
-        body: formData,
-      });
 
       resetForm();
       onClose();
@@ -274,7 +478,7 @@ const [title, setTitle] = useState("");
       setError(
         error instanceof Error
           ? error.message
-          : "Failed to create post."
+          : "Failed to create thread.",
       );
     } finally {
       setPosting(false);
@@ -282,24 +486,21 @@ const [title, setTitle] = useState("");
   };
 
   const resetForm = () => {
-    setTitle("");
-    setContent("");
+    drafts.forEach((draft) => {
+      if (draft.thumbnail) {
+        URL.revokeObjectURL(draft.thumbnail.url);
+      }
 
-    if (thumbnail) {
-      URL.revokeObjectURL(thumbnail.url);
-    }
-
-    images.forEach((image) => {
-      URL.revokeObjectURL(image.url);
+      draft.images.forEach((image) => {
+        URL.revokeObjectURL(image.url);
+      });
     });
 
-    setThumbnail(null);
-    setImages([]);
-
-    setCode("");
-    setCodeLanguage("javascript");
-    setShowCode(false);
+    setDrafts([createDraft()]);
     setError("");
+
+    thumbnailInputRefs.current = {};
+    imagesInputRefs.current = {};
   };
 
   const handleClose = () => {
@@ -307,6 +508,7 @@ const [title, setTitle] = useState("");
       return;
     }
 
+    resetForm();
     onClose();
   };
 
@@ -328,11 +530,15 @@ const [title, setTitle] = useState("");
         <header className="post-modal__header">
           <div>
             <h2 id="post-modal-title">
-              Create a post
+              {drafts.length > 1
+                ? "Create a thread"
+                : "Create a post"}
             </h2>
 
             <p>
-              Share something with your community.
+              {drafts.length > 1
+                ? `${drafts.length} posts will be published as one thread.`
+                : "Share something with your community."}
             </p>
           </div>
 
@@ -351,264 +557,369 @@ const [title, setTitle] = useState("");
           className="post-modal__form"
           onSubmit={handleSubmit}
         >
-          <div className="post-modal__field">
-            <label htmlFor="post-title">
-              Title
-            </label>
+          {drafts.map((draft, index) => (
+            <section
+              className="post-modal__thread-card"
+              key={draft.id}
+            >
+              <div className="post-modal__thread-header">
+                <div>
+                  <span className="post-modal__thread-number">
+                    Post {index + 1}
+                  </span>
 
-            <input
-              id="post-title"
-              type="text"
-              value={title}
-              onChange={(event) =>
-                setTitle(event.target.value)
-              }
-              placeholder="Give your post a title"
-              maxLength={200}
-              required
-            />
-          </div>
-          <div className="post-modal__content-input">
-            <textarea
-              value={content}
-              onChange={(event) =>
-                setContent(event.target.value)
-              }
-              placeholder="What's on your mind?"
-              maxLength={MAX_CONTENT_LENGTH}
-              disabled={posting}
-            />
+                  {index > 0 && (
+                    <span className="post-modal__thread-connection">
+                      Chained to post {index}
+                    </span>
+                  )}
+                </div>
 
-            <span>
-              {content.length}/{MAX_CONTENT_LENGTH}
-            </span>
-          </div>
-
-          <section className="post-modal__media">
-            <div className="post-modal__section-header">
-              <div>
-                <strong>Post thumbnail</strong>
-                <p>
-                  Choose the main image for your post.
-                </p>
+                {drafts.length > 1 && (
+                  <button
+                    type="button"
+                    className="post-modal__remove-post"
+                    onClick={() =>
+                      removePostFromThread(
+                        draft.id,
+                      )
+                    }
+                    disabled={posting}
+                  >
+                    <Trash2 size={15} />
+                    Remove
+                  </button>
+                )}
               </div>
 
-              {!thumbnail && (
-                <button
-                  type="button"
-                  className="post-modal__secondary-button"
-                  onClick={() =>
-                    thumbnailInputRef.current?.click()
-                  }
-                  disabled={posting}
+              <div className="post-modal__field">
+                <label
+                  htmlFor={`post-title-${draft.id}`}
                 >
-                  <ImagePlus size={17} />
-                  Add thumbnail
-                </button>
-              )}
-            </div>
+                  Title
+                </label>
 
-            <input
-              ref={thumbnailInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleThumbnailChange}
-            />
+                <input
+                  id={`post-title-${draft.id}`}
+                  type="text"
+                  value={draft.title}
+                  onChange={(event) =>
+                    updateDraft(draft.id, {
+                      title: event.target.value,
+                    })
+                  }
+                  placeholder="Give your post a title"
+                  maxLength={200}
+                  disabled={posting}
+                  required
+                />
+              </div>
 
-            {thumbnail && (
-              <div className="post-modal__thumbnail">
-                <img
-                  src={thumbnail.url}
-                  alt="Post thumbnail preview"
+              <div className="post-modal__content-input">
+                <textarea
+                  value={draft.content}
+                  onChange={(event) =>
+                    updateDraft(draft.id, {
+                      content: event.target.value,
+                    })
+                  }
+                  placeholder="What's on your mind?"
+                  maxLength={MAX_CONTENT_LENGTH}
+                  disabled={posting}
                 />
 
-                <button
-                  type="button"
-                  onClick={removeThumbnail}
-                  disabled={posting}
-                  aria-label="Remove thumbnail"
-                >
-                  <Trash2 size={17} />
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section className="post-modal__media">
-            <div className="post-modal__section-header">
-              <div>
-                <strong>
-                  Additional pictures
-                </strong>
-
-                <p>
-                  Add up to {MAX_IMAGES} more pictures.
-                </p>
+                <span>
+                  {draft.content.length}/
+                  {MAX_CONTENT_LENGTH}
+                </span>
               </div>
 
-              <button
-                type="button"
-                className="post-modal__secondary-button"
-                onClick={() =>
-                  imagesInputRef.current?.click()
-                }
-                disabled={
-                  posting ||
-                  images.length >= MAX_IMAGES
-                }
-              >
-                <ImagePlus size={17} />
-                Add pictures
-              </button>
-            </div>
+              <section className="post-modal__media">
+                <div className="post-modal__section-header">
+                  <div>
+                    <strong>
+                      Post thumbnail
+                    </strong>
 
-            <input
-              ref={imagesInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              onChange={handleImagesChange}
-            />
+                    <p>
+                      Choose the main image for
+                      this post.
+                    </p>
+                  </div>
 
-            {images.length > 0 && (
-              <div className="post-modal__image-grid">
-                {images.map((image, index) => (
-                  <div
-                    className="post-modal__image"
-                    key={image.url}
-                  >
+                  {!draft.thumbnail && (
+                    <button
+                      type="button"
+                      className="post-modal__secondary-button"
+                      onClick={() =>
+                        thumbnailInputRefs.current[
+                          draft.id
+                        ]?.click()
+                      }
+                      disabled={posting}
+                    >
+                      <ImagePlus size={17} />
+                      Add thumbnail
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  ref={(element) => {
+                    thumbnailInputRefs.current[
+                      draft.id
+                    ] = element;
+                  }}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) =>
+                    handleThumbnailChange(
+                      draft.id,
+                      event,
+                    )
+                  }
+                />
+
+                {draft.thumbnail && (
+                  <div className="post-modal__thumbnail">
                     <img
-                      src={image.url}
-                      alt={`Additional preview ${index + 1}`}
+                      src={draft.thumbnail.url}
+                      alt="Post thumbnail preview"
                     />
 
                     <button
                       type="button"
                       onClick={() =>
-                        removeImage(index)
+                        removeThumbnail(
+                          draft.id,
+                        )
                       }
                       disabled={posting}
-                      aria-label={`Remove image ${
-                        index + 1
-                      }`}
+                      aria-label="Remove thumbnail"
                     >
-                      <X size={16} />
+                      <Trash2 size={17} />
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
+                )}
+              </section>
 
-          <section className="post-modal__code">
-            <div className="post-modal__section-header">
-              <div>
-                <strong>
-                  <Code2 size={17} />
-                  Code
-                </strong>
+              <section className="post-modal__media">
+                <div className="post-modal__section-header">
+                  <div>
+                    <strong>
+                      Additional pictures
+                    </strong>
 
-                <p>
-                  Add code when your post is technical
-                  or programming-related.
-                </p>
-              </div>
+                    <p>
+                      Add up to {MAX_IMAGES} more
+                      pictures.
+                    </p>
+                  </div>
 
-              <button
-                type="button"
-                className="post-modal__secondary-button"
-                onClick={() =>
-                  setShowCode((current) => !current)
-                }
-                disabled={posting}
-              >
-                {showCode
-                  ? "Remove code"
-                  : "Add code"}
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    className="post-modal__secondary-button"
+                    onClick={() =>
+                      imagesInputRefs.current[
+                        draft.id
+                      ]?.click()
+                    }
+                    disabled={
+                      posting ||
+                      draft.images.length >=
+                        MAX_IMAGES
+                    }
+                  >
+                    <ImagePlus size={17} />
+                    Add pictures
+                  </button>
+                </div>
 
-            {showCode && (
-              <div className="post-modal__code-editor">
-                <select
-                  value={codeLanguage}
+                <input
+                  ref={(element) => {
+                    imagesInputRefs.current[
+                      draft.id
+                    ] = element;
+                  }}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
                   onChange={(event) =>
-                    setCodeLanguage(
-                      event.target.value,
+                    handleImagesChange(
+                      draft.id,
+                      event,
                     )
                   }
-                  disabled={posting}
-                >
-                  <option value="javascript">
-                    JavaScript
-                  </option>
-
-                  <option value="typescript">
-                    TypeScript
-                  </option>
-
-                  <option value="python">
-                    Python
-                  </option>
-
-                  <option value="java">
-                    Java
-                  </option>
-
-                  <option value="csharp">
-                    C#
-                  </option>
-
-                  <option value="cpp">
-                    C++
-                  </option>
-
-                  <option value="php">
-                    PHP
-                  </option>
-
-                  <option value="html">
-                    HTML
-                  </option>
-
-                  <option value="css">
-                    CSS
-                  </option>
-
-                  <option value="sql">
-                    SQL
-                  </option>
-
-                  <option value="bash">
-                    Bash
-                  </option>
-
-                  <option value="json">
-                    JSON
-                  </option>
-
-                  <option value="other">
-                    Other
-                  </option>
-                </select>
-
-                <textarea
-                  value={code}
-                  onChange={(event) =>
-                    setCode(event.target.value)
-                  }
-                  placeholder="// Write your code here..."
-                  disabled={posting}
-                  spellCheck={false}
                 />
-              </div>
-            )}
-          </section>
+
+                {draft.images.length > 0 && (
+                  <div className="post-modal__image-grid">
+                    {draft.images.map(
+                      (image, imageIndex) => (
+                        <div
+                          className="post-modal__image"
+                          key={image.url}
+                        >
+                          <img
+                            src={image.url}
+                            alt={`Additional preview ${
+                              imageIndex + 1
+                            }`}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeImage(
+                                draft.id,
+                                imageIndex,
+                              )
+                            }
+                            disabled={posting}
+                            aria-label={`Remove image ${
+                              imageIndex + 1
+                            }`}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <section className="post-modal__code">
+                <div className="post-modal__section-header">
+                  <div>
+                    <strong>
+                      <Code2 size={17} />
+                      Code
+                    </strong>
+
+                    <p>
+                      Add code when your post is
+                      technical or
+                      programming-related.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="post-modal__secondary-button"
+                    onClick={() =>
+                      updateDraft(draft.id, {
+                        showCode:
+                          !draft.showCode,
+                      })
+                    }
+                    disabled={posting}
+                  >
+                    {draft.showCode
+                      ? "Remove code"
+                      : "Add code"}
+                  </button>
+                </div>
+
+                {draft.showCode && (
+                  <div className="post-modal__code-editor">
+                    <select
+                      value={draft.codeLanguage}
+                      onChange={(event) =>
+                        updateDraft(draft.id, {
+                          codeLanguage:
+                            event.target.value,
+                        })
+                      }
+                      disabled={posting}
+                    >
+                      <option value="javascript">
+                        JavaScript
+                      </option>
+                      <option value="typescript">
+                        TypeScript
+                      </option>
+                      <option value="python">
+                        Python
+                      </option>
+                      <option value="java">
+                        Java
+                      </option>
+                      <option value="csharp">
+                        C#
+                      </option>
+                      <option value="cpp">
+                        C++
+                      </option>
+                      <option value="php">
+                        PHP
+                      </option>
+                      <option value="html">
+                        HTML
+                      </option>
+                      <option value="css">
+                        CSS
+                      </option>
+                      <option value="sql">
+                        SQL
+                      </option>
+                      <option value="bash">
+                        Bash
+                      </option>
+                      <option value="json">
+                        JSON
+                      </option>
+                      <option value="other">
+                        Other
+                      </option>
+                    </select>
+
+                    <textarea
+                      value={draft.code}
+                      onChange={(event) =>
+                        updateDraft(draft.id, {
+                          code: event.target.value,
+                        })
+                      }
+                      placeholder="// Write your code here..."
+                      disabled={posting}
+                      spellCheck={false}
+                    />
+                  </div>
+                )}
+              </section>
+
+              {index < drafts.length - 1 && (
+                <div className="post-modal__thread-line">
+                  <span />
+                  <small>
+                    Next post in thread
+                  </small>
+                  <span />
+                </div>
+              )}
+            </section>
+          ))}
+
+          {drafts.length < MAX_THREAD_POSTS && (
+            <button
+              type="button"
+              className="post-modal__add-post"
+              onClick={addPostToThread}
+              disabled={posting}
+            >
+              <Plus size={18} />
+              Add another post
+            </button>
+          )}
 
           {error && (
-            <div className="post-modal__error">
+            <div
+              className="post-modal__error"
+              role="alert"
+            >
               {error}
             </div>
           )}
@@ -628,7 +939,11 @@ const [title, setTitle] = useState("");
               className="post-modal__submit"
               disabled={posting}
             >
-              {posting ? "Posting..." : "Post"}
+              {posting
+                ? "Publishing..."
+                : drafts.length > 1
+                  ? `Publish thread (${drafts.length})`
+                  : "Post"}
             </button>
           </footer>
         </form>

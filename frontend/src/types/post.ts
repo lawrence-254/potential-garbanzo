@@ -25,6 +25,10 @@ export interface Post {
   code: string | null;
   codeLanguage: string | null;
 
+  previousPostId: string | null;
+  nextPostId: string | null;
+  isChained: boolean;
+
   images: PostImage[];
 
   createdAt: string;

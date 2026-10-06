@@ -68,8 +68,13 @@ export async function getPost(postId: string): Promise<Post> {
 // POST /api/posts
 //
 export async function createPost(
-  formData: FormData
+  formData: FormData,
+  previousPostId?: string,
 ): Promise<Post> {
+  if (previousPostId) {
+    formData.append("previousPostId", previousPostId);
+  }
+
   const response = await apiRequest<CreatePostResponse>("/posts", {
     method: "POST",
     body: formData,

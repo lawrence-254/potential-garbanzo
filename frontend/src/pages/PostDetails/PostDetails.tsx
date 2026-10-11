@@ -38,6 +38,8 @@ export default function PostDetails() {
   const { user } = useAuth();
 
   const [post, setPost] = useState<Post | null>(null);
+  const [chainedPosts, setChainedPosts] = useState<Post[]>([]);
+  const [chainLoading, setChainLoading] = useState(false);
 
   const [comments, setComments] = useState<Comment[]>([]);
 
@@ -77,6 +79,29 @@ export default function PostDetails() {
         setLiked(data.likedByCurrentUser);
         setLikeCount(data.likeCount);
         setCurrentImageIndex(0);
+        setChainedPosts([]);
+        setChainLoading(true);
+
+        try {
+          const chain: Post[] = [];
+          const visited = new Set<string>([data.id]);
+          let nextPostId = data.nextPostId;
+
+          while (nextPostId && !visited.has(nextPostId)) {
+            visited.add(nextPostId);
+
+            const nextPost = await getPost(nextPostId);
+
+            chain.push(nextPost);
+            nextPostId = nextPost.nextPostId;
+          }
+
+          setChainedPosts(chain);
+        } catch (chainError) {
+          console.error("Failed to load chained posts:", chainError);
+        } finally {
+          setChainLoading(false);
+        }
       } catch (error) {
         setError(
           error instanceof Error
@@ -473,7 +498,56 @@ export default function PostDetails() {
           </div>
         </footer>
       </article>
+      <section className="post-details__chain">
+  <h2>Post chain</h2>
 
+  {chainLoading ? (
+    <p>Loading chained posts...</p>
+  ) : chainedPosts.length === 0 ? (
+    <p>No follow-up posts yet.</p>
+  ) : (
+    <div className="post-details__chain-list">
+      {chainedPosts.map((chainedPost, index) => (
+        <article
+          key={chainedPost.id}
+          className="post-details__chain-item"
+        >
+          <p className="post-details__chain-number">
+            Part {index + 2}
+          </p>
+
+          <div className="post-details__chain-author">
+            <strong>
+              {chainedPost.author.displayName}
+            </strong>
+            <span>@{chainedPost.author.username}</span>
+          </div>
+
+          <h3>{chainedPost.title}</h3>
+
+          <p>{chainedPost.content}</p>
+
+          {chainedPost.thumbnail && (
+            <img
+              className="post-details__chain-image"
+              src={getImageUrl(chainedPost.thumbnail)}
+              alt={chainedPost.title}
+            />
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(`/posts/${chainedPost.id}`)
+            }
+          >
+            View post
+          </button>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
       <section className="post-details__comments">
         <div className="post-details__comments-header">
           <h2>Comments</h2>

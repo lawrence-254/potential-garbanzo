@@ -898,3 +898,42 @@
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
+
+.add-to-post-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #176b43;
+  border-radius: 8px;
+  background-color: #176b43;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.add-to-post-button:hover {
+  background-color: #125536;
+  border-color: #125536;
+}
+
+.add-to-post-button:active {
+  transform: scale(0.98);
+}
+
+.add-to-post-button:focus-visible {
+  outline: 2px solid #176b43;
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .add-to-post-button {
+    width: 100%;
+  }
+}

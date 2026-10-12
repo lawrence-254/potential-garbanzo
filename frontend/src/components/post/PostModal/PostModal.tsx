@@ -22,6 +22,7 @@ interface PostModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPostCreated?: () => void;
+  previousPostId?: string | null;
 }
 
 interface PreviewImage {
@@ -43,6 +44,7 @@ export default function PostModal({
   isOpen,
   onClose,
   onPostCreated,
+  previousPostId,
 }: PostModalProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -260,6 +262,10 @@ export default function PostModal({
 
       formData.append("title", title.trim());
       formData.append("content", content.trim());
+      
+      if (previousPostId) {
+        formData.append("previousPostId", previousPostId);
+      }
 
       if (code.trim()) {
         formData.append("code", code.trim());

@@ -50,12 +50,12 @@ export default function Login() {
     <div className="login">
       <div className="login__card">
         <div className="login__brand">
-          <div className="login__logo">R</div>
+          <div className="login__logo">TechWitter</div>
 
           <h1>Welcome back</h1>
 
           <p>
-            Log in to continue to your Royal community.
+            Log in to continue to TechWitter community.
           </p>
         </div>
 

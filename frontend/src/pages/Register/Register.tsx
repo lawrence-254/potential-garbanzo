@@ -72,8 +72,7 @@ export default function Register() {
     <div className="register">
       <div className="register__card">
         <div className="register__brand">
-          <div className="register__logo">R</div>
-          <h1>Join Royal</h1>
+          <div className="register__logo">TechWitter</div>
           <p>Create your account and connect with your community.</p>
         </div>
 

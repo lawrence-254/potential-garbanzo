@@ -7,6 +7,7 @@ import {
   MessageCircle,
   Send,
   Trash2,
+  Link
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -24,6 +25,7 @@ import { getImageUrl } from "../../utils/imageUrl";
 import PostModal from "../../components/post/PostModal/PostModal";
 
 import "./PostDetails.css";
+import PostCard from "../../components/post/PostCard/PostCard";
 
 export default function PostDetails() {
   const navigate = useNavigate();
@@ -63,6 +65,8 @@ export default function PostDetails() {
       setChainLoading(true);
 
       const data = await getPost(postId);
+
+      console.log("post data", data)
 
       setPost(data);
       setLiked(Boolean(data.likedByCurrentUser));
@@ -399,9 +403,10 @@ export default function PostDetails() {
 
           {/* Show "Add to post" only for the author */}
           {isAuthor && (
-            <button type="button" onClick={() => setPostModalOpen(true)}>
-              Add to post
-            </button>
+            <div className="post-details__action" onClick={() => setPostModalOpen(true)}>
+            <Link size={20} />
+            <span>Link post</span>
+          </div>
           )}
         </footer>
       </article>
@@ -415,38 +420,12 @@ export default function PostDetails() {
             <p>Loading chained posts...</p>
           ) : (
             <div className="post-details__chain-list">
-              {chainedPosts.map((chainedPost, index) => (
-                <article
-                  key={chainedPost.id}
-                  className="post-details__chain-item"
-                >
-                  <p className="post-details__chain-number">
-                    Part {index + 2}
-                  </p>
+              {chainedPosts.map((chainedPost) => (
+                <PostCard
+                key={chainedPost.id}
+                post={chainedPost}
+                />
 
-                  <div className="post-details__chain-author">
-                    <strong>{chainedPost.author?.displayName}</strong>
-                    <span>@{chainedPost.author?.username}</span>
-                  </div>
-
-                  <h3>{chainedPost.title}</h3>
-                  <p>{chainedPost.content}</p>
-
-                  {chainedPost.thumbnail && (
-                    <img
-                      className="post-details__chain-image"
-                      src={getImageUrl(chainedPost.thumbnail)}
-                      alt={chainedPost.title}
-                    />
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/posts/${chainedPost.id}`)}
-                  >
-                    View post
-                  </button>
-                </article>
               ))}
             </div>
           )}

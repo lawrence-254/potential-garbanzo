@@ -24,6 +24,7 @@ import type { Post } from "../../../types/post";
 import { getImageUrl } from "../../../utils/imageUrl";
 
 import "./PostCard.css";
+import PostModal from "../PostModal/PostModal";
 
 interface PostCardProps {
   post: Post;
@@ -48,6 +49,7 @@ function PostCard({
   const [liking, setLiking] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
 
   const excerpt =
     post.content.length > 160
@@ -165,7 +167,7 @@ function PostCard({
   ) => {
     event.stopPropagation();
 
-    setMenuOpen(false);
+    setOpenEdit(true);
 
     // Edit functionality will be added in the next step.
     console.log("Edit post:", post.id);
@@ -336,6 +338,15 @@ function PostCard({
           <span>{post.commentCount}</span>
         </button>
       </footer>
+       <PostModal
+        isOpen={openEdit}
+        onClose={() => setOpenEdit(false)}
+        onPostCreated={async () => {
+          setOpenEdit(false);
+          await populateEdit();
+        }}
+        previousPostId={post.id}
+      />
     </article>
   );
 }
